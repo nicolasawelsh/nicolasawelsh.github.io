@@ -57,6 +57,8 @@ pre {
   padding: 1rem;
   border-radius: 10px;
   overflow-x: auto;
+  margin: 0;
+  line-height: 1.45;
 }
 
 pre code {
@@ -68,14 +70,18 @@ pre code {
 /* Override Jekyll/Rouge default white code block background */
 div.highlighter-rouge,
 .highlight {
+  position: relative;
   background: #1c1f26;
   border: 1px solid #2a2f3a;
   border-radius: 10px;
+  margin: 0 0 1rem;
 }
 
 .highlight pre {
   background: transparent;
   border: 0;
+  margin: 0;
+  padding-bottom: 0;
 }
 
 /* Higher-contrast syntax colors for dark mode */
@@ -128,6 +134,33 @@ div.highlighter-rouge,
 .language-ini .highlight span {
   color: #d8e2f0 !important;
   background: transparent !important;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 2;
+  border: 1px solid #33415a;
+  border-radius: 6px;
+  background: #171b24;
+  color: #cdd6e3;
+  font-size: 0.76rem;
+  line-height: 1;
+  padding: 0.35rem 0.52rem;
+  cursor: pointer;
+}
+
+.code-copy-btn:hover,
+.code-copy-btn:focus {
+  background: #202836;
+  border-color: #466089;
+  color: #e7eefb;
+}
+
+.code-copy-btn.is-copied {
+  border-color: #3b7150;
+  color: #c9f0d6;
 }
 
 blockquote {
