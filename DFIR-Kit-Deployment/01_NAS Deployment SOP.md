@@ -1,3 +1,8 @@
+---
+layout: default
+title: "01 NAS Deployment SOP"
+---
+
 ## Purpose
 
 This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using Samba. The NAS provides controlled file shares for ingestion staging, read-only evidence access, and analyst notes storage for the lab environment.

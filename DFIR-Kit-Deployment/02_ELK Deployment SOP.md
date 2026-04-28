@@ -1,3 +1,8 @@
+---
+layout: default
+title: "02 ELK Deployment SOP"
+---
+
 ## Purpose
 
 This SOP documents the full deployment process for a single-node ELK stack used to ingest DFIR artifact CSVs generated from tools such as EvtxECmd, Hayabusa, MFTECmd `$MFT`, and MFTECmd `$J`. The goal is to create a repeatable DFIR kit deployment that supports timeline hunting, event review, dashboarding, and multi-host artifact correlation in Kibana.

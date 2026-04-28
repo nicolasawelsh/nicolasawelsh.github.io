@@ -1,9 +1,14 @@
+---
+layout: default
+title: Nicolas Welsh
+---
+
 # Nicolas Welsh
 
 [nicspace.xyz](https://nicspace.xyz/)
 
 ---
 
-## Deployments
+## Guides
 
 - [DFIR-Kit-Deployment](./DFIR-Kit-Deployment/)
