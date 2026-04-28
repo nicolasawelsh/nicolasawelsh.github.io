@@ -13,7 +13,7 @@ body {
 section,
 header,
 footer {
-  background: #080d18;
+  background: transparent;
 }
 
 a {
@@ -122,6 +122,14 @@ div.highlighter-rouge,
   background: transparent !important;
 }
 
+/* Keep ini blocks plain and readable too */
+.language-ini .highlight pre,
+.language-ini .highlight code,
+.language-ini .highlight span {
+  color: #d8e2f0 !important;
+  background: transparent !important;
+}
+
 blockquote {
   border-left: 4px solid #29446f;
   color: #9fb0ca;
@@ -159,6 +167,22 @@ header {
 
 section {
   width: calc(100% - 320px);
+  background: #111317;
+  border-radius: 10px;
+}
+
+header ul {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+header ul li {
+  border-right: 0;
+}
+
+header ul a {
+  background: transparent;
 }
 
 @media print, screen and (max-width: 1200px) {
