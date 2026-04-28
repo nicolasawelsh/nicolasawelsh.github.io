@@ -40,7 +40,7 @@ Lab CIDR: 172.16.0.0/24
 Protocol: Samba (SMB/CIFS)
 
 Shares:
-  ingest_rw  -> CSV staging for ELK ingest
+  ingest  -> CSV staging for ELK ingest
   evidence   -> read-only to analysts, write access for admins
   vault      -> analyst/admin collaboration (notes, runbooks)
 ```
@@ -240,7 +240,7 @@ sudo smbpasswd -a admin1
 ## Section 5 — Create NAS Directory Structure
 
 ```bash
-sudo mkdir -p /data/ingest_rw
+sudo mkdir -p /data/ingest
 sudo mkdir -p /data/evidence
 sudo mkdir -p /data/vault
 ```
@@ -259,7 +259,7 @@ sudo chown -R root:admins /data
 Set primary groups per share:
 
 ```bash
-sudo chgrp -R analysts /data/ingest_rw
+sudo chgrp -R analysts /data/ingest
 sudo chgrp -R admins /data/evidence
 sudo chgrp -R analysts /data/vault
 ```
@@ -267,7 +267,7 @@ sudo chgrp -R analysts /data/vault
 Set directory permissions:
 
 ```bash
-sudo chmod -R 2770 /data/ingest_rw
+sudo chmod -R 2770 /data/ingest
 sudo chmod -R 2770 /data/vault
 sudo chmod -R 2770 /data/evidence
 ```
@@ -296,8 +296,8 @@ sudo nano /etc/samba/smb.conf
 Use/append this share configuration:
 
 ```ini
-[ingest_rw]
-   path = /data/ingest_rw
+[ingest]
+   path = /data/ingest
    browseable = yes
    read only = no
    valid users = @analysts @admins
@@ -355,7 +355,7 @@ Expected result: no syntax errors from `testparm`, and `smbd` active/running.
 From Windows or FLARE VM:
 
 ```text
-\\172.16.0.10\ingest_rw
+\\172.16.0.10\ingest
 \\172.16.0.10\evidence
 \\172.16.0.10\vault
 ```
@@ -363,7 +363,7 @@ From Windows or FLARE VM:
 Validation:
 
 ```text
-analyst user can write to ingest_rw and vault
+analyst user can write to ingest and vault
 analyst user cannot write to evidence
 admin user can write to all three shares
 ```
@@ -395,7 +395,7 @@ sudo nano /etc/fstab
 ```
 
 ```text
-//172.16.0.10/ingest_rw /ingest cifs credentials=/root/.smbcred,vers=3.0,ro,uid=logstash,gid=logstash,file_mode=0444,dir_mode=0555,nofail 0 0
+//172.16.0.10/ingest /ingest cifs credentials=/root/.smbcred,vers=3.0,ro,uid=logstash,gid=logstash,file_mode=0444,dir_mode=0555,nofail 0 0
 ```
 
 Mount and validate:
@@ -435,7 +435,7 @@ sudo pdbedit -L
 Check share ACLs and Samba share block:
 
 ```bash
-getfacl /data/ingest_rw
+getfacl /data/ingest
 getfacl /data/evidence
 ```
 
@@ -480,7 +480,7 @@ sudo ufw status verbose
 [ ] UFW only allows SSH/SMB from 172.16.0.0/24
 [ ] Samba service is active and enabled
 [ ] testparm returns no Samba syntax errors
-[ ] ingest_rw share is writable by analysts/admins
+[ ] ingest share is writable by analysts/admins
 [ ] evidence share is read-only for analysts
 [ ] evidence share is writable for admins
 [ ] vault share is writable by analysts/admins
@@ -498,11 +498,11 @@ Analyst workstation:
   \\172.16.0.10\vault
 
 FLARE VM:
-  \\172.16.0.10\ingest_rw
+  \\172.16.0.10\ingest
   \\172.16.0.10\evidence
 
 ELK VM:
-  //172.16.0.10/ingest_rw mounted at /ingest (read-only)
+  //172.16.0.10/ingest mounted at /ingest (read-only)
 ```
 
 ---

@@ -12,7 +12,7 @@ This guide is based on the working architecture validated during deployment and 
 - Elasticsearch stores and indexes DFIR records.
 - Logstash reads curated CSVs from a local ingest folder.
 - Kibana provides Discover, dashboards, and analyst access.
-- A NAS acts as the evidence.
+- A NAS acts as the ingest share.
 - Files are copied from the NAS into a local ingestion folder before Logstash processes them.
 
 ## Table of Contents
@@ -52,7 +52,7 @@ This guide is based on the working architecture validated during deployment and 
 ## Architecture Overview
 
 ```text
-NAS Evidence Share
+NAS Ingest Share
         ↓
 Mounted read-only at /ingest
         ↓
@@ -80,7 +80,7 @@ Default Gateway: 172.16.0.1
    Logstash file watching can behave inconsistently against SMB/CIFS mounts. The NAS should be treated as artifact storage only.
 
 2. **Mount the NAS read-only.**
-   This prevents accidental modification or deletion of source evidence files.
+   This prevents accidental modification or deletion of source artifact files.
 
 3. **Copy working files to `/ingest_local`.**
    Logstash reads from a local filesystem to avoid SMB file-watcher issues.
@@ -481,7 +481,7 @@ sudo chmod 600 /root/.smbcred
 Replace IP and share name as needed:
 
 ```bash
-sudo mount -t cifs //172.16.0.10/evidence /ingest \
+sudo mount -t cifs //172.16.0.10/ingest /ingest \
 -o credentials=/root/.smbcred,vers=3.0,ro,uid=logstash,gid=logstash,file_mode=0444,dir_mode=0555
 ```
 
@@ -502,7 +502,7 @@ sudo nano /etc/fstab
 Add:
 
 ```text
-//172.16.0.10/evidence /ingest cifs credentials=/root/.smbcred,vers=3.0,ro,uid=logstash,gid=logstash,file_mode=0444,dir_mode=0555 0 0
+//172.16.0.10/ingest /ingest cifs credentials=/root/.smbcred,vers=3.0,ro,uid=logstash,gid=logstash,file_mode=0444,dir_mode=0555 0 0
 ```
 
 Test:
@@ -1401,6 +1401,6 @@ Notes: Ensure least-privilege role assignment
 ```text
 Kibana URL: http://<ELK-SERVER-IP>:5601
 Elasticsearch URL: https://127.0.0.1:9200
-NAS Share: //172.16.0.10/evidence
+NAS Share: //172.16.0.10/ingest
 Credential Vault Reference: <system/name>
 ```
