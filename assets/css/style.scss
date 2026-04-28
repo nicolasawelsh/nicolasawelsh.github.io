@@ -35,6 +35,11 @@ h6 {
   letter-spacing: 0.01em;
 }
 
+strong,
+b {
+  color: #f3f7ff;
+}
+
 code,
 pre {
   font-family: "JetBrains Mono", "Consolas", "Monaco", "Courier New", monospace;
@@ -71,6 +76,50 @@ div.highlighter-rouge,
 .highlight pre {
   background: transparent;
   border: 0;
+}
+
+/* Higher-contrast syntax colors for dark mode */
+.highlight .k,
+.highlight .kd,
+.highlight .kr,
+.highlight .nt,
+.highlight .nb {
+  color: #8ec5ff;
+}
+
+.highlight .na,
+.highlight .nv,
+.highlight .nc {
+  color: #c7e0ff;
+}
+
+.highlight .s,
+.highlight .s1,
+.highlight .s2,
+.highlight .sx {
+  color: #c3f0d5;
+}
+
+.highlight .c,
+.highlight .c1,
+.highlight .cm {
+  color: #7f91ac;
+}
+
+/* Keep shell options/flags readable */
+.highlight .o,
+.highlight .ow,
+.highlight .p,
+.highlight .m {
+  color: #d8e2f0;
+}
+
+/* Tone down noisy conf highlighting to clean, readable text */
+.language-conf .highlight pre,
+.language-conf .highlight code,
+.language-conf .highlight span {
+  color: #d8e2f0 !important;
+  background: transparent !important;
 }
 
 blockquote {
