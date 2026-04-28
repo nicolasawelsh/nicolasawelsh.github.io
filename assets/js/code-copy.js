@@ -9,6 +9,22 @@
     return source ? source.innerText.replace(/\n$/, "") : "";
   }
 
+  function isPlainTextBlock(container) {
+    const codeEl = container.querySelector("pre code");
+    const preEl = container.querySelector("pre");
+    const classSources = [
+      container,
+      codeEl,
+      preEl,
+      container.closest(".highlighter-rouge"),
+      container.closest(".highlight"),
+    ].filter(Boolean);
+
+    return classSources.some((el) =>
+      /(language-text|language-plaintext)/.test(el.className || "")
+    );
+  }
+
   async function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
@@ -32,6 +48,7 @@
     blocks.forEach((block) => {
       if (block.querySelector(".code-copy-btn")) return;
       if (!block.querySelector("pre")) return;
+      if (isPlainTextBlock(block)) return;
 
       const button = document.createElement("button");
       button.type = "button";

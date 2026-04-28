@@ -67,9 +67,8 @@ pre code {
   padding: 0;
 }
 
-/* Override Jekyll/Rouge default white code block background */
-div.highlighter-rouge,
-.highlight {
+/* Style only the outer code-block wrapper to avoid nested panels */
+div.highlighter-rouge {
   position: relative;
   background: #1c1f26;
   border: 1px solid #2a2f3a;
@@ -77,11 +76,28 @@ div.highlighter-rouge,
   margin: 0 0 1rem;
 }
 
+/* Fallback when a bare .highlight appears without outer wrapper */
+.highlight:not(div.highlighter-rouge .highlight) {
+  position: relative;
+  background: #1c1f26;
+  border: 1px solid #2a2f3a;
+  border-radius: 10px;
+  margin: 0 0 1rem;
+}
+
+.highlighter-rouge .highlight {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+
 .highlight pre {
   background: transparent;
   border: 0;
   margin: 0;
-  padding-bottom: 0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
 /* Higher-contrast syntax colors for dark mode */
