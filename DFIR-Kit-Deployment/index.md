@@ -9,5 +9,5 @@ This guide set walks through building a practical DFIR lab foundation. In digita
 
 The NAS and ELK stack deployments are the first steps in preparing that environment. This example deployment is built around an ESXi node.
 
-- [01 NAS Deployment](./01_NAS%20Deployment)
-- [02 ELK Deployment](./02_ELK%20Deployment)
+- [01 NAS Deployment](./01_NAS-Deployment)
+- [02 ELK Deployment](./02_ELK-Deployment)
