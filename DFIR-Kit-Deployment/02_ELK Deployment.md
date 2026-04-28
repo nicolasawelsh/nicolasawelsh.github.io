@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "02 ELK Deployment SOP"
+title: "02 ELK Deployment"
 ---
 
 ## Purpose

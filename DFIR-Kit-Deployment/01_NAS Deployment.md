@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "01 NAS Deployment SOP"
+title: "01 NAS Deployment"
 ---
 
 ## Purpose
