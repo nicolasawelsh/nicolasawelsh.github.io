@@ -9,26 +9,27 @@ This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using
 
 ## Table of Contents
 
-- [[#Architecture Overview]]
-- [[#Section 1 — Prepare Ubuntu Server]]
-- [[#Section 2 — Online Package Install]]
-- [[#Section 3 — Post ESXi Migration Configuration]]
-- [[#Section 4 — Create Groups and Users]]
-- [[#Section 5 — Create NAS Directory Structure]]
-- [[#Section 6 — Configure Linux Permissions and ACLs]]
-- [[#Section 7 — Configure Samba Shares]]
-- [[#Section 8 — Validate Samba Configuration]]
-- [[#Section 9 — Verify Share Access]]
-- [[#Section 10 — Mount NAS Share from ELK VM]]
-- [[#Section 11 — Operational Guardrails]]
-- [[#Section 12 — Testing and Troubleshooting Notes]]
-- [[#Section 13 — Configure Firewall (UFW)]]
-- [[#Section 14 — Final Validation Checklist]]
-- [[#Appendix A — Recommended Share Mapping]]
-- [[#Appendix B — Credential Tracking Worksheet]]
+- [Architecture Overview](#architecture-overview)
+- [Section 1 — Prepare Ubuntu Server](#section-1-prepare-ubuntu-server)
+- [Section 2 — Online Package Install](#section-2-online-package-install)
+- [Section 3 — Post ESXi Migration Configuration](#section-3-post-esxi-migration-configuration)
+- [Section 4 — Create Groups and Users](#section-4-create-groups-and-users)
+- [Section 5 — Create NAS Directory Structure](#section-5-create-nas-directory-structure)
+- [Section 6 — Configure Linux Permissions and ACLs](#section-6-configure-linux-permissions-and-acls)
+- [Section 7 — Configure Samba Shares](#section-7-configure-samba-shares)
+- [Section 8 — Validate Samba Configuration](#section-8-validate-samba-configuration)
+- [Section 9 — Verify Share Access](#section-9-verify-share-access)
+- [Section 10 — Mount NAS Share from ELK VM](#section-10-mount-nas-share-from-elk-vm)
+- [Section 11 — Operational Guardrails](#section-11-operational-guardrails)
+- [Section 12 — Testing and Troubleshooting Notes](#section-12-testing-and-troubleshooting-notes)
+- [Section 13 — Configure Firewall (UFW)](#section-13-configure-firewall-ufw)
+- [Section 14 — Final Validation Checklist](#section-14-final-validation-checklist)
+- [Appendix A — Recommended Share Mapping](#appendix-a-recommended-share-mapping)
+- [Appendix B — Credential Tracking Worksheet](#appendix-b-credential-tracking-worksheet)
 
 ---
 
+<a id="architecture-overview"></a>
 ## Architecture Overview
 
 ```text
@@ -46,6 +47,7 @@ Shares:
 
 ---
 
+<a id="section-1-prepare-ubuntu-server"></a>
 ## Section 1 — Prepare Ubuntu Server
 
 ### Recommended VM Resources
@@ -60,6 +62,7 @@ Network:  Lab VLAN/Subnet (172.16.0.0/24)
 
 ---
 
+<a id="section-2-online-package-install"></a>
 ## Section 2 — Online Package Install
 
 These steps require internet access. Complete them before moving the VM into an offline/isolated ESXi environment.
@@ -82,6 +85,7 @@ sudo apt install -y samba acl cifs-utils ufw
 
 ---
 
+<a id="section-3-post-esxi-migration-configuration"></a>
 ## Section 3 — Post ESXi Migration Configuration
 
 ### Configure a Static IP with Netplan After Migrating to ESXi
@@ -203,6 +207,7 @@ Expected result: root filesystem `/` should show close to the expanded disk size
 
 ---
 
+<a id="section-4-create-groups-and-users"></a>
 ## Section 4 — Create Groups and Users
 
 Create groups:
@@ -231,6 +236,7 @@ sudo smbpasswd -a admin1
 
 ---
 
+<a id="section-5-create-nas-directory-structure"></a>
 ## Section 5 — Create NAS Directory Structure
 
 ```bash
@@ -241,6 +247,7 @@ sudo mkdir -p /data/vault
 
 ---
 
+<a id="section-6-configure-linux-permissions-and-acls"></a>
 ## Section 6 — Configure Linux Permissions and ACLs
 
 Set base ownership:
@@ -276,6 +283,7 @@ sudo setfacl -R -d -m g:admins:rwx /data/evidence
 
 ---
 
+<a id="section-7-configure-samba-shares"></a>
 ## Section 7 — Configure Samba Shares
 
 Back up existing config:
@@ -328,6 +336,7 @@ sudo systemctl enable smbd
 
 ---
 
+<a id="section-8-validate-samba-configuration"></a>
 ## Section 8 — Validate Samba Configuration
 
 ```bash
@@ -340,6 +349,7 @@ Expected result: no syntax errors from `testparm`, and `smbd` active/running.
 
 ---
 
+<a id="section-9-verify-share-access"></a>
 ## Section 9 — Verify Share Access
 
 From Windows or FLARE VM:
@@ -360,6 +370,7 @@ admin user can write to all three shares
 
 ---
 
+<a id="section-10-mount-nas-share-from-elk-vm"></a>
 ## Section 10 — Mount NAS Share from ELK VM
 
 Create mount point and credentials file:
@@ -396,6 +407,7 @@ ls -l /ingest
 
 ---
 
+<a id="section-11-operational-guardrails"></a>
 ## Section 11 — Operational Guardrails
 
 - Treat `evidence` as controlled source storage.
@@ -406,6 +418,7 @@ ls -l /ingest
 
 ---
 
+<a id="section-12-testing-and-troubleshooting-notes"></a>
 ## Section 12 — Testing and Troubleshooting Notes
 
 ### Test 1 — Share Access Denied
@@ -442,6 +455,7 @@ ls -l /ingest
 
 ---
 
+<a id="section-13-configure-firewall-ufw"></a>
 ## Section 13 — Configure Firewall (UFW)
 
 Restrict inbound access so SMB and SSH are reachable from `172.16.0.0/24` only.
@@ -458,6 +472,7 @@ sudo ufw status verbose
 
 ---
 
+<a id="section-14-final-validation-checklist"></a>
 ## Section 14 — Final Validation Checklist
 
 ```text
@@ -475,6 +490,7 @@ sudo ufw status verbose
 
 ---
 
+<a id="appendix-a-recommended-share-mapping"></a>
 ## Appendix A — Recommended Share Mapping
 
 ```text
@@ -491,6 +507,7 @@ ELK VM:
 
 ---
 
+<a id="appendix-b-credential-tracking-worksheet"></a>
 ## Appendix B — Credential Tracking Worksheet
 
 ```text

@@ -17,37 +17,38 @@ This guide is based on the working architecture validated during deployment and 
 
 ## Table of Contents
 
-- [[#Architecture Overview]]
-- [[#Supported Input Files]]
-- [[#Section 1 — Prepare Ubuntu Server]]
-- [[#Section 2 — Online Package Install]]
-- [[#Section 3 — Post ESXi Migration Configuration]]
-- [[#Section 4 — Configure Elasticsearch]]
-- [[#Section 5 — Create Logstash Ingest User]]
-- [[#Section 6 — Configure Kibana]]
-- [[#Section 7 — Configure NAS Mount]]
-- [[#Section 8 — Prepare Local Ingest Folder]]
-- [[#Section 9 — Configure Logstash Global Settings]]
-- [[#Section 10 — Logstash Pipeline Configuration]]
-- [[#Section 11 — Validate Logstash Configuration]]
-- [[#Section 12 — Start Logstash and Ingest]]
-- [[#Section 13 — Verify Elasticsearch Indices]]
-- [[#Section 14 — Rebuild Indices After Ingestion Issues]]
-- [[#Section 15 — Create Kibana Data View]]
-- [[#Section 16 — Create Kibana Users and Roles]]
-- [[#Section 17 — Testing and Troubleshooting Notes]]
-- [[#Section 18 — Standard Reingest Procedure]]
-- [[#Section 19 — Operational Workflow]]
-- [[#Section 20 — Suggested Initial Dashboards]]
-- [[#Section 21 — Configure Firewall (UFW)]]
-- [[#Section 22 — Final Validation Checklist]]
-- [[#Appendix A — Timestamp Mapping]]
-- [[#Appendix B — Safe Delete and Reingest Commands]]
-- [[#Appendix C — Quick Health Commands]]
-- [[#Appendix D — Credential Tracking Worksheet]]
+- [Architecture Overview](#architecture-overview)
+- [Supported Input Files](#supported-input-files)
+- [Section 1 — Prepare Ubuntu Server](#section-1-prepare-ubuntu-server)
+- [Section 2 — Online Package Install](#section-2-online-package-install)
+- [Section 3 — Post ESXi Migration Configuration](#section-3-post-esxi-migration-configuration)
+- [Section 4 — Configure Elasticsearch](#section-4-configure-elasticsearch)
+- [Section 5 — Create Logstash Ingest User](#section-5-create-logstash-ingest-user)
+- [Section 6 — Configure Kibana](#section-6-configure-kibana)
+- [Section 7 — Configure NAS Mount](#section-7-configure-nas-mount)
+- [Section 8 — Prepare Local Ingest Folder](#section-8-prepare-local-ingest-folder)
+- [Section 9 — Configure Logstash Global Settings](#section-9-configure-logstash-global-settings)
+- [Section 10 — Logstash Pipeline Configuration](#section-10-logstash-pipeline-configuration)
+- [Section 11 — Validate Logstash Configuration](#section-11-validate-logstash-configuration)
+- [Section 12 — Start Logstash and Ingest](#section-12-start-logstash-and-ingest)
+- [Section 13 — Verify Elasticsearch Indices](#section-13-verify-elasticsearch-indices)
+- [Section 14 — Rebuild Indices After Ingestion Issues](#section-14-rebuild-indices-after-ingestion-issues)
+- [Section 15 — Create Kibana Data View](#section-15-create-kibana-data-view)
+- [Section 16 — Create Kibana Users and Roles](#section-16-create-kibana-users-and-roles)
+- [Section 17 — Testing and Troubleshooting Notes](#section-17-testing-and-troubleshooting-notes)
+- [Section 18 — Standard Reingest Procedure](#section-18-standard-reingest-procedure)
+- [Section 19 — Operational Workflow](#section-19-operational-workflow)
+- [Section 20 — Suggested Initial Dashboards](#section-20-suggested-initial-dashboards)
+- [Section 21 — Configure Firewall (UFW)](#section-21-configure-firewall-ufw)
+- [Section 22 — Final Validation Checklist](#section-22-final-validation-checklist)
+- [Appendix A — Timestamp Mapping](#appendix-a-timestamp-mapping)
+- [Appendix B — Safe Delete and Reingest Commands](#appendix-b-safe-delete-and-reingest-commands)
+- [Appendix C — Quick Health Commands](#appendix-c-quick-health-commands)
+- [Appendix D — Credential Tracking Worksheet](#appendix-d-credential-tracking-worksheet)
 
 ---
 
+<a id="architecture-overview"></a>
 ## Architecture Overview
 
 ```text
@@ -99,6 +100,7 @@ dfir-usnjrnl
 
 ---
 
+<a id="supported-input-files"></a>
 ## Supported Input Files
 
 The SOP assumes the following filename format:
@@ -135,6 +137,7 @@ MFTECmd_MFT
 
 ---
 
+<a id="section-1-prepare-ubuntu-server"></a>
 ## Section 1 — Prepare Ubuntu Server
 
 ### Recommended VM Resources
@@ -151,6 +154,7 @@ Network:  Static IP recommended
 
 ---
 
+<a id="section-2-online-package-install"></a>
 ## Section 2 — Online Package Install
 
 These steps require internet access. Complete them before moving the VM into an offline/isolated ESXi environment.
@@ -191,6 +195,7 @@ sudo apt install -y elasticsearch logstash kibana
 
 ---
 
+<a id="section-3-post-esxi-migration-configuration"></a>
 ## Section 3 — Post ESXi Migration Configuration
 
 ### Configure a Static IP with Netplan After Migrating to ESXi
@@ -312,6 +317,7 @@ Expected result: root filesystem `/` should show close to the expanded disk size
 
 ---
 
+<a id="section-4-configure-elasticsearch"></a>
 ## Section 4 — Configure Elasticsearch
 
 Edit Elasticsearch configuration:
@@ -356,6 +362,7 @@ Expected result: JSON cluster information.
 
 ---
 
+<a id="section-5-create-logstash-ingest-user"></a>
 ## Section 5 — Create Logstash Ingest User
 
 Use a dedicated ingest user instead of the `elastic` superuser.
@@ -399,6 +406,7 @@ Expected result: username `logstash_ingest` with role `logstash_writer`.
 
 ---
 
+<a id="section-6-configure-kibana"></a>
 ## Section 6 — Configure Kibana
 
 Edit Kibana configuration:
@@ -438,6 +446,7 @@ Password: <elastic password>
 
 ---
 
+<a id="section-7-configure-nas-mount"></a>
 ## Section 7 — Configure NAS Mount
 
 The NAS should be mounted read-only at `/ingest`.
@@ -505,6 +514,7 @@ ls -l /ingest
 
 ---
 
+<a id="section-8-prepare-local-ingest-folder"></a>
 ## Section 8 — Prepare Local Ingest Folder
 
 Create a local folder that Logstash will actually read from:
@@ -529,6 +539,7 @@ Logstash file input is more reliable against local filesystems. SMB/CIFS mounts 
 
 ---
 
+<a id="section-9-configure-logstash-global-settings"></a>
 ## Section 9 — Configure Logstash Global Settings
 
 Edit:
@@ -554,6 +565,7 @@ http.port: 9600
 
 ---
 
+<a id="section-10-logstash-pipeline-configuration"></a>
 ## Section 10 — Logstash Pipeline Configuration
 
 ### Input Filename Convention (Used by This Example)
@@ -738,6 +750,7 @@ output {
 
 ---
 
+<a id="section-11-validate-logstash-configuration"></a>
 ## Section 11 — Validate Logstash Configuration
 
 Before starting or restarting Logstash, test the config:
@@ -756,6 +769,7 @@ If the test fails, do not restart the service until the syntax issue is fixed.
 
 ---
 
+<a id="section-12-start-logstash-and-ingest"></a>
 ## Section 12 — Start Logstash and Ingest
 
 Prepare the completed files log:
@@ -796,6 +810,7 @@ event.dataset => evtx | hayabusa | mft | usnjrnl
 
 ---
 
+<a id="section-13-verify-elasticsearch-indices"></a>
 ## Section 13 — Verify Elasticsearch Indices
 
 Check indices:
@@ -830,6 +845,7 @@ fields match the correct artifact type
 
 ---
 
+<a id="section-14-rebuild-indices-after-ingestion-issues"></a>
 ## Section 14 — Rebuild Indices After Ingestion Issues
 
 Use this procedure when parsing errors, bad mappings, or incorrect field extraction require a clean rebuild.
@@ -868,6 +884,7 @@ dfir-evtx, dfir-hayabusa, dfir-mft, and dfir-usnjrnl are recreated
 
 ---
 
+<a id="section-15-create-kibana-data-view"></a>
 ## Section 15 — Create Kibana Data View
 
 In Kibana:
@@ -906,6 +923,7 @@ This is normal. The `.keyword` field is the exact-match version of the field and
 
 ---
 
+<a id="section-16-create-kibana-users-and-roles"></a>
 ## Section 16 — Create Kibana Users and Roles
 
 ### Create DFIR Analyst Role
@@ -961,6 +979,7 @@ dfir_admin    = management of data views, spaces, dashboards
 
 ---
 
+<a id="section-17-testing-and-troubleshooting-notes"></a>
 ## Section 17 — Testing and Troubleshooting Notes
 
 ### Test 1 — Logstash Will Not Start
@@ -1062,7 +1081,7 @@ Also mount NAS read-only.
 
 Elasticsearch expands CSV data significantly due to indexing.
 
-If storage needs to be increased, follow [[#Section 3 — Post ESXi Migration Configuration]], specifically **Resize Disk After ESXi Expansion (If Applicable)**.
+If storage needs to be increased, follow [Section 3 — Post ESXi Migration Configuration](#section-3-post-esxi-migration-configuration), specifically **Resize Disk After ESXi Expansion (If Applicable)**.
 
 Recommended:
 
@@ -1087,10 +1106,11 @@ curl -k -u elastic -X DELETE "https://127.0.0.1:9200/dfir-*"
 
 ---
 
+<a id="section-18-standard-reingest-procedure"></a>
 ## Section 18 — Standard Reingest Procedure
 
 Use this when changing Logstash mappings or CSV parsing logic.
-For full troubleshooting context and validation guidance, see [[#Section 14 — Rebuild Indices After Ingestion Issues]].
+For full troubleshooting context and validation guidance, see [Section 14 — Rebuild Indices After Ingestion Issues](#section-14-rebuild-indices-after-ingestion-issues).
 
 ```bash
 sudo systemctl stop logstash
@@ -1108,6 +1128,7 @@ curl -k -u elastic "https://127.0.0.1:9200/_cat/indices?v"
 
 ---
 
+<a id="section-19-operational-workflow"></a>
 ## Section 19 — Operational Workflow
 
 ### Normal DFIR Ingest Process
@@ -1134,6 +1155,7 @@ event.dataset.keyword : "usnjrnl"
 
 ---
 
+<a id="section-20-suggested-initial-dashboards"></a>
 ## Section 20 — Suggested Initial Dashboards
 
 ### Dashboard 1 — DFIR Overview
@@ -1232,6 +1254,7 @@ SourceFile
 
 ---
 
+<a id="section-21-configure-firewall-ufw"></a>
 ## Section 21 — Configure Firewall (UFW)
 
 Restrict inbound access so SMB and ELK are reachable from `172.16.0.0/24` only.
@@ -1248,6 +1271,7 @@ sudo ufw status verbose
 
 ---
 
+<a id="section-22-final-validation-checklist"></a>
 ## Section 22 — Final Validation Checklist
 
 Before considering the deployment complete, verify:
@@ -1280,6 +1304,7 @@ usnjrnl
 
 ---
 
+<a id="appendix-a-timestamp-mapping"></a>
 ## Appendix A — Timestamp Mapping
 
 ```text
@@ -1291,6 +1316,7 @@ MFTECmd $MFT → Created0x10
 
 ---
 
+<a id="appendix-b-safe-delete-and-reingest-commands"></a>
 ## Appendix B — Safe Delete and Reingest Commands
 
 ```bash
@@ -1303,6 +1329,7 @@ sudo journalctl -u logstash -f
 
 ---
 
+<a id="appendix-c-quick-health-commands"></a>
 ## Appendix C — Quick Health Commands
 
 ```bash
@@ -1316,6 +1343,7 @@ df -h
 
 ---
 
+<a id="appendix-d-credential-tracking-worksheet"></a>
 ## Appendix D — Credential Tracking Worksheet
 
 Use this worksheet to track all credentials required by this deployment.  

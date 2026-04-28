@@ -4,9 +4,9 @@
 @import "{{ site.theme }}";
 
 body {
-  background: #05080f;
-  color: #b9c7dd;
-  font-family: "JetBrains Mono", "Consolas", "Monaco", "Courier New", monospace;
+  background: #111317;
+  color: #cdd6e3;
+  font-family: "Inter", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
 }
 
 .container,
@@ -31,21 +31,46 @@ h3,
 h4,
 h5,
 h6 {
-  color: #e3edff;
+  color: #e6edf8;
   letter-spacing: 0.01em;
 }
 
 code,
 pre {
-  background: #0a1220;
-  color: #c6d6ef;
-  border: 1px solid #1a2942;
+  font-family: "JetBrains Mono", "Consolas", "Monaco", "Courier New", monospace;
+  background: #1c1f26;
+  color: #d8e2f0;
+  border: 1px solid #2a2f3a;
+}
+
+code {
+  padding: 0.12rem 0.35rem;
+  border-radius: 6px;
 }
 
 pre {
-  padding: 0.9rem;
-  border-radius: 8px;
+  padding: 1rem;
+  border-radius: 10px;
   overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* Override Jekyll/Rouge default white code block background */
+div.highlighter-rouge,
+.highlight {
+  background: #1c1f26;
+  border: 1px solid #2a2f3a;
+  border-radius: 10px;
+}
+
+.highlight pre {
+  background: transparent;
+  border: 0;
 }
 
 blockquote {
@@ -75,5 +100,21 @@ th {
 }
 
 .wrapper {
-  max-width: 980px;
+  width: min(1600px, 95vw);
+  max-width: none;
+}
+
+header {
+  width: 280px;
+}
+
+section {
+  width: calc(100% - 320px);
+}
+
+@media print, screen and (max-width: 1200px) {
+  header,
+  section {
+    width: auto;
+  }
 }
