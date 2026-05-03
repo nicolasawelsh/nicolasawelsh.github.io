@@ -5,7 +5,7 @@ title: Nicolas Welsh
 
 # Nicolas Welsh
 
-[nicspace.xyz](https://nicspace.xyz/)
+[LinkedIn](https://www.linkedin.com/in/nicolas-welsh/)
 
 ---
 
@@ -21,4 +21,3 @@ title: Nicolas Welsh
 
 - [Resources](./Documents/Resources/)
 - [CTF writeups](./Documents/CTF-Writeups/)
-- [CV](./Documents/CV/)
