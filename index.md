@@ -11,4 +11,14 @@ title: Nicolas Welsh
 
 ## Guides
 
-- [DFIR-Kit-Deployment](./DFIR-Kit-Deployment/)
+- [DFIR kit deployment](./Documents/Guides/DFIR-Kit-Deployment/)
+
+## Tips
+
+- [Tips index](./Documents/Tips/)
+
+## Other
+
+- [Resources](./Documents/Resources/)
+- [CTF writeups](./Documents/CTF-Writeups/)
+- [CV](./Documents/CV/)
