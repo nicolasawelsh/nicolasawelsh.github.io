@@ -23,7 +23,7 @@ Tools Used:
 
 Looking at the PCAP in Wireshark, we can see 87.96.21.84 port scanning 87.96.21.81 with TCP SYN packets.
 
-![1](images/1.png)
+![1](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/1.png)
 
 ``` text
 87.96.21.84
@@ -33,7 +33,7 @@ Looking at the PCAP in Wireshark, we can see 87.96.21.84 port scanning 87.96.21.
 
 Opening the PCAP in NetworkMiner, the only attempted credentials are listed.
 
-![2](images/2.png)
+![2](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/2.png)
 
 ``` text
 sa
@@ -43,11 +43,11 @@ sa
 
 To determine if the credentials are successful, we search Wireshark for this password via Ctrl+F in the Packet Details.
 
-![3-1](images/3-1.png)
+![3-1](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/3-1.png)
 
 We observe a successful response following the credential attempt.
 
-![3-2](images/3-2.png)
+![3-2](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/3-2.png)
 
 ``` text
 cyb3rd3f3nd3r$
@@ -57,7 +57,7 @@ cyb3rd3f3nd3r$
 
 Following the successful response, client enables xp_cmdshell on the target.
 
-![4](images/4.png)
+![4](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/4.png)
 
 ``` text
 xp_cmdshell
@@ -67,7 +67,7 @@ xp_cmdshell
 
 Using the provided evtx logs, we can run hayabusa against them to alert on some of the default sigma rules. We observed MSFConsole run against Host Application winlogon.exe.
 
-![5](images/5.png)
+![5](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/5.png)
 
 ``` text
 winlogon.exe
@@ -77,7 +77,7 @@ winlogon.exe
 
 Looking back at the PCAP and searching HTTP, the first HTTP GET request is for checking.ps1.
 
-![6](images/6.png)
+![6](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/6.png)
 
 ``` text
 http://87.96.21.84/checking.ps1
@@ -95,7 +95,7 @@ S-1-5-32-544
 
 In the same checking checking.ps1 script, we see the Windows Defender registry keys defined under the $defenderRegistryKeys variable.
 
-![8](images/8.png)
+![8](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/8.png)
 
 ``` text
 DisableAntiSpyware,DisableRoutinelyTakingAction,DisableRealtimeMonitoring,SubmitSamplesConsent,SpynetReporting
@@ -105,7 +105,7 @@ DisableAntiSpyware,DisableRoutinelyTakingAction,DisableRealtimeMonitoring,Submit
 
 We increment streams on Wireshark until we see the next GET request for a file.
 
-![9](images/9.png)
+![9](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/9.png)
 
 ``` text
 http://87.96.21.84/del.ps1
@@ -115,7 +115,7 @@ http://87.96.21.84/del.ps1
 
 Looking back at checking.ps1, we can seach schtasks for the task creation command.
 
-![10](images/10.png)
+![10](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/10.png)
 
 ``` text
 \Microsoft\Windows\MUI\LPupdate
@@ -133,7 +133,7 @@ TA0005
 
 Looking forward a few more streams there is a nicely commented Invoke-PowerDump.ps1 that "dumps hashes from the local system."
 
-![12](images/12.png)
+![12](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/12.png)
 
 ``` text
 Invoke-PowerDump.ps1
@@ -143,7 +143,7 @@ Invoke-PowerDump.ps1
 
 Going back to the stream we passed earlier containing ichigo-lite.ps1, we see C:\ProgramData\hashes.txt being read in the script for dumped credentials.
 
-![13](images/13.png)
+![13](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/13.png)
 
 ``` text
 hashes.txt
@@ -153,11 +153,11 @@ hashes.txt
 
 We see extracted_hosts.txt being read in ichigo-lite.ps1 as if it would contain discovered hosts.
 
-![14-1](images/14-1.png)
+![14-1](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/14-1.png)
 
 We later see a GET request for this same extracted_hosts.txt.
 
-![14-2](images/14-2.png)
+![14-2](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/14-2.png)
 
 ``` text
 extracted_hosts.txt
@@ -167,7 +167,7 @@ extracted_hosts.txt
 
 We can hash javaw.exe, search VirusTotal, and check the Details tab for Files Dropped.
 
-![15](images/15.png)
+![15](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/15.png)
 
 ``` text
 # DECRYPT FILES BLUESKY #
@@ -177,7 +177,7 @@ We can hash javaw.exe, search VirusTotal, and check the Details tab for Files Dr
 
 This is found on the Detection tab listed after Family labels.
 
-![16](images/16.png)
+![16](/Documents/CTF-Writeups/BlueSky-Ransomware-Blue-Team-Lab/images/16.png)
 
 ``` text
 conti
