@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "02 ELK Deployment"
+title: "05 ELK Deployment"
 ---
 
 ## Purpose

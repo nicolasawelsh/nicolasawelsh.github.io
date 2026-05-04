@@ -1,15 +1,16 @@
 ---
 layout: default
-title: "01 NAS Deployment"
+title: "04 NAS Deployment"
 ---
 
 ## Purpose
 
-This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using Samba. The NAS provides controlled file shares for ingestion staging, read-only evidence access, and analyst notes storage for the lab environment.
+This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using Samba. The NAS provides controlled file shares for ingestion staging, read-only evidence access, and analyst notes storage for the lab environment. **Client mount policy** (which systems may map which shares) is defined under [Client mount policy](#client-mount-policy-flare-laptops-and-elk-service) and must be enforced together with [06 Flare VM build](./06_Flare-VM-Build) and [07 Suggestions](./07_Suggestions).
 
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
+- [Client mount policy (Flare, laptops, and ELK service)](#client-mount-policy-flare-laptops-and-elk-service)
 - [Section 1 — Prepare Ubuntu Server](#section-1-prepare-ubuntu-server)
 - [Section 2 — Online Package Install](#section-2-online-package-install)
 - [Section 3 — Post ESXi Migration Configuration](#section-3-post-esxi-migration-configuration)
@@ -44,6 +45,26 @@ Shares:
   evidence   -> read-only to analysts, write access for admins
   vault      -> analyst/admin collaboration (notes, runbooks)
 ```
+
+---
+
+<a id="client-mount-policy-flare-laptops-and-elk-service"></a>
+## Client mount policy (Flare, laptops, and ELK service)
+
+This lab distinguishes **interactive mounts** (analysts and Windows tooling) from the **ELK service account** mount used for automation.
+
+### FLARE VMs (forensic workstations)
+
+- **`ingest`** — Mount **only** from **FLARE VMs**. Use this share for ELK-oriented CSV staging, KAPE outputs, intermediate artifacts approved for ingest, and collaboration paths that belong on the lab network (not on unmanaged laptops).
+- **`evidence`** — Mount **only** from **FLARE VMs**. Mount forensic images (E01/DD/etc.), work directly against evidence from the NAS where your procedure allows, and keep **evidence off analyst laptops**.
+
+### Trusted analyst laptops
+
+- **`vault`** — May be mounted from **trusted analyst host laptops** for **notes and collaboration only** (for example **Obsidian** vaults, runbooks, and administrative text). **Do not** store forensic images, binaries, raw case exports, or other **case artifacts** on laptop-mounted shares; those belong on **evidence** / **ingest** via **FLARE** only.
+
+### ELK VM (service account)
+
+- The **ELK VM** mounts **`ingest` read-only** at the Linux path used in **[05 ELK deployment](./05_ELK-Deployment)** so Logstash can follow the documented **NAS → local copy** workflow. That is a **server automation** mount, not an analyst workstation mapping. **Analyst laptops must not** map **`ingest`** or **`evidence`**.
 
 ---
 
@@ -352,11 +373,17 @@ Expected result: no syntax errors from `testparm`, and `smbd` active/running.
 <a id="section-9-verify-share-access"></a>
 ## Section 9 — Verify Share Access
 
-From Windows or FLARE VM:
+From a **FLARE VM**, map **`ingest`** and **`evidence`** (and `vault` if you use it from FLARE):
 
 ```text
 \\172.16.0.10\ingest
 \\172.16.0.10\evidence
+\\172.16.0.10\vault
+```
+
+From a **trusted analyst laptop**, verify **`vault` only** for notes workflows (no forensic artifacts on the laptop):
+
+```text
 \\172.16.0.10\vault
 ```
 
@@ -410,6 +437,7 @@ ls -l /ingest
 <a id="section-11-operational-guardrails"></a>
 ## Section 11 — Operational Guardrails
 
+- Enforce the **[client mount policy](#client-mount-policy-flare-laptops-and-elk-service)**: **`ingest`** and **`evidence`** only from **FLARE**; **`vault`** only from laptops for **non-forensic notes**; no case artifacts on unmanaged laptops.
 - Treat `evidence` as controlled source storage.
 - Keep ELK ingest workflow against local copy (`/ingest_local`) instead of direct SMB reads.
 - Use least privilege for all analyst accounts.
@@ -484,8 +512,9 @@ sudo ufw status verbose
 [ ] evidence share is read-only for analysts
 [ ] evidence share is writable for admins
 [ ] vault share is writable by analysts/admins
-[ ] ELK VM can mount NAS ingest share
+[ ] ELK VM can mount NAS ingest share (read-only service mount per ELK guide)
 [ ] Credentials are documented in approved vault
+[ ] Mount policy enforced: ingest/evidence from FLARE only; vault-only from laptops for notes
 ```
 
 ---
@@ -494,14 +523,14 @@ sudo ufw status verbose
 ## Appendix A — Recommended Share Mapping
 
 ```text
-Analyst workstation:
+Trusted analyst laptop (notes only — Obsidian / runbooks; NO forensic artifacts):
   \\172.16.0.10\vault
 
-FLARE VM:
+Each FLARE VM (forensic analysis — images, KAPE, collaboration on ingest as needed):
   \\172.16.0.10\ingest
   \\172.16.0.10\evidence
 
-ELK VM:
+ELK VM (automation only — see 05 ELK deployment; not an analyst SMB session):
   //172.16.0.10/ingest mounted at /ingest (read-only)
 ```
 
