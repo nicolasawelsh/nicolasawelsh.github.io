@@ -34,7 +34,15 @@ For **longer-term production** use, **more analysts**, or **higher case throughp
 
 The numbered deployment guides in this folder remain a **logical sequence**; only the **hardware footprint and cluster configuration** change at scale.
 
-## Related reading
+---
 
-- [03 ESXi deployment](./03_ESXi-Deployment) — host and port-group baseline  
-- [07 Suggestions](./07_Suggestions) — snapshots, data placement, and collaboration hygiene  
+## DFIR kit guides
+
+- [Overview](./index)
+- [01 Introduction](./01_Introduction)
+- [02 Limitations](./02_Limitations)
+- [03 ESXi deployment](./03_ESXi-Deployment)
+- [04 NAS deployment](./04_NAS-Deployment)
+- [05 ELK deployment](./05_ELK-Deployment)
+- [06 Flare VM build](./06_Flare-VM-Build)
+- [07 Suggestions](./07_Suggestions)

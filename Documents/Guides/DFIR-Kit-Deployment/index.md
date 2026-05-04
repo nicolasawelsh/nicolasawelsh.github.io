@@ -7,8 +7,11 @@ title: DFIR-Kit-Deployment
 
 This guide set walks through building a practical DFIR lab foundation on a **standalone ESXi** host: segmented network, **NAS** storage, **FLARE** Windows analysis VMs, and a **single-node ELK** stack for CSV-based hunting in Kibana.
 
-## Guides
+---
 
+## DFIR kit guides
+
+- [Overview](./index)
 - [01 Introduction](./01_Introduction)
 - [02 Limitations](./02_Limitations)
 - [03 ESXi deployment](./03_ESXi-Deployment)

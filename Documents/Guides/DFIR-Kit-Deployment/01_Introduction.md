@@ -40,17 +40,15 @@ Standalone ESXi host
 | ELK VM | 172.16.0.20 |
 | FLARE VM | Static or DHCP reservation inside 172.16.0.0/24 |
 
-## Document map
-
-| Guide | Scope |
-|-------|--------|
-| [02 Limitations](./02_Limitations) | Capacity assumptions and when to scale out |
-| [03 ESXi deployment](./03_ESXi-Deployment) | Standalone ESXi host and lab networking |
-| [04 NAS deployment](./04_NAS-Deployment) | Ubuntu NAS, Samba shares, mount policy |
-| [05 ELK deployment](./05_ELK-Deployment) | Single-node ELK stack and ingest |
-| [06 Flare VM build](./06_Flare-VM-Build) | Windows analysis VM and tooling |
-| [07 Suggestions](./07_Suggestions) | Hardening and future improvements |
-
 ---
 
-*SOP source: DFIR Kit Deployment SOP, Task Group Georgia — Nicolas A. Welsh.*
+## DFIR kit guides
+
+- [Overview](./index)
+- [01 Introduction](./01_Introduction)
+- [02 Limitations](./02_Limitations)
+- [03 ESXi deployment](./03_ESXi-Deployment)
+- [04 NAS deployment](./04_NAS-Deployment)
+- [05 ELK deployment](./05_ELK-Deployment)
+- [06 Flare VM build](./06_Flare-VM-Build)
+- [07 Suggestions](./07_Suggestions)
