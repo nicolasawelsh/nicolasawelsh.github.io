@@ -11,6 +11,17 @@ This SOP describes how to **extract and normalize** common DFIR artifacts from a
 
 All examples use host **`DESKTOP-EXAMPLE`**. Replace it with the real computer name when it materially differs from your evidence.
 
+## Table of Contents
+
+- [Outputs expected by the ELK pipeline](#outputs-expected-by-the-elk-pipeline)
+- [Prerequisites](#prerequisites)
+- [EvtxECmd (Windows event logs)](#evtxecmd-windows-event-logs)
+- [Hayabusa (sigma-style rules, full coverage)](#hayabusa-sigma-style-rules-full-coverage)
+- [MFTECmd (`$MFT` and `$J`)](#mftecmd-mft-and-j)
+- [Plaso supertimeline (JSONL)](#plaso-supertimeline-jsonl)
+- [Package for NAS / ELK](#package-for-nas--elk)
+- [DFIR kit guides](#dfir-kit-guides)
+
 ### Outputs expected by the ELK pipeline
 
 | Tool | Example output filename |
