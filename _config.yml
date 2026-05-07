@@ -1,2 +1,4 @@
 title: Nicolas Welsh
 theme: jekyll-theme-minimal
+exclude:
+  - "Documents/Guides/DFIR-Kit-Deployment/DFIR_Kit_SOP.docx"

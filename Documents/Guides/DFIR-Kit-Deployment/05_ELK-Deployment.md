@@ -5,7 +5,7 @@ title: "05 ELK Deployment"
 
 ## Purpose
 
-This SOP documents the full deployment process for a single-node ELK stack used to ingest DFIR artifact CSVs generated from tools such as EvtxECmd, Hayabusa, MFTECmd `$MFT`, and MFTECmd `$J`. The goal is to create a repeatable DFIR kit deployment that supports timeline hunting, event review, dashboarding, and multi-host artifact correlation in Kibana.
+This SOP documents the full deployment process for a single-node ELK stack used to ingest DFIR artifact **CSVs** from tools such as EvtxECmd, Hayabusa, MFTECmd `$MFT`, and MFTECmd `$J`, and optional **Plaso supertimeline output** as **JSON Lines** (`.jsonl` from `psort.py` with dynamic output in JSON line format, or equivalent). The goal is to create a repeatable DFIR kit deployment that supports timeline hunting, event review, dashboarding, and multi-host artifact correlation in Kibana.
 
 This guide is based on the working architecture validated during deployment and troubleshooting:
 
@@ -45,6 +45,7 @@ This guide is based on the working architecture validated during deployment and 
 - [Appendix B — Safe Delete and Reingest Commands](#appendix-b-safe-delete-and-reingest-commands)
 - [Appendix C — Quick Health Commands](#appendix-c-quick-health-commands)
 - [Appendix D — Credential Tracking Worksheet](#appendix-d-credential-tracking-worksheet)
+- [Final Reality Check](#final-reality-check)
 
 ---
 
@@ -58,7 +59,7 @@ Mounted read-only at /ingest
         ↓
 Local processing copy at /ingest_local
         ↓
-Logstash CSV pipeline
+Logstash pipeline (Zimmerman CSVs + optional Plaso JSONL)
         ↓
 Elasticsearch indices
         ↓
@@ -96,12 +97,18 @@ dfir-evtx
 dfir-hayabusa
 dfir-mft
 dfir-usnjrnl
+dfir-plaso
 ```
+
+6. **Optional Plaso supertimeline as JSONL.**
+   Export a Plaso **dynamic / supertimeline** to **JSON Lines** (for example with Log2Timeline’s `psort.py` using output format **`json_line`**, writing one JSON object per line). Copy the resulting file into `/ingest_local` using the filename pattern **`<HOSTNAME>_plaso_Output.jsonl`** so the pipeline assigns **`event.dataset` = `plaso`** and indexes **`dfir-plaso`**. Events use Plaso’s **`timestamp`** field (epoch **microseconds**), which the pipeline converts to **`@timestamp`**.
 
 ---
 
 <a id="supported-input-files"></a>
 ## Supported Input Files
+
+### Zimmerman-style CSV artifacts
 
 The SOP assumes the following filename format:
 
@@ -126,7 +133,7 @@ DESKTOP-02
 EXAMPLE-DC
 ```
 
-The artifact name must include one of the following:
+The artifact name must include one of the following (case-insensitive match in the pipeline):
 
 ```text
 EvtxECmd
@@ -134,6 +141,22 @@ Hayabusa
 MFTECmd_J
 MFTECmd_MFT
 ```
+
+### Plaso supertimeline (JSON Lines)
+
+For a **Plaso** supertimeline exported as **JSONL** (one JSON record per line), use:
+
+```text
+<HOSTNAME>_plaso_Output.jsonl
+```
+
+Example:
+
+```text
+EXAMPLE-DC_plaso_Output.jsonl
+```
+
+Files may live under subfolders of `/ingest_local`; the pipeline watches **`/ingest_local/**/*_plaso_Output.jsonl`**. Keep the **`_plaso_Output.jsonl`** suffix so routing and **`event.dataset`** resolve to **`plaso`**.
 
 ---
 
@@ -339,11 +362,51 @@ discovery.type: single-node
 xpack.security.enabled: true
 ```
 
+Do **not** set `cluster.initial_master_nodes` when using `discovery.type: single-node`. If that setting appears in `/etc/elasticsearch/elasticsearch.yml`—for example from package defaults or a multi-node example—remove or comment it out. Otherwise Elasticsearch fails at startup with: `setting [cluster.initial_master_nodes] is not allowed when [discovery.type] is set to [single-node]`.
+
+### Configure Elasticsearch Heap (Required)
+
+Elasticsearch may be **OOM-killed** or unstable if heap is left at defaults on constrained VMs.
+
+Create heap options:
+
+```bash
+sudo nano /etc/elasticsearch/jvm.options.d/heap.options
+```
+
+Example for many DFIR lab VMs (adjust to your RAM):
+
+```text
+-Xms8g
+-Xmx8g
+```
+
+Guidelines:
+
+- Size heap up to **half of physical RAM** allocated to the VM (**do not exceed 50%** of RAM—leave headroom for OS cache, Lucene off-heap, Kibana, Logstash, and the filesystem).
+- **Minimum** commonly useful for this stack: **4 GB**.
+- **Preferred** for DFIR workloads when RAM allows: **8 GB or more** (still capped by the **50% RAM** rule and Elasticsearch’s practical heap ceiling).
+
+Heap is applied on JVM startup. Continue with **Start Elasticsearch** below on first install. If Elasticsearch **already ran** before you edited `heap.options`, restart it instead:
+
+```bash
+sudo systemctl restart elasticsearch
+sudo systemctl status elasticsearch
+```
+
+If heap is too large for available RAM, symptoms include **OOM kills**, **Elasticsearch crash loops**, **socket hang up** from clients, and **Kibana failing to initialize**.
+
 Start Elasticsearch:
 
 ```bash
 sudo systemctl enable elasticsearch
 sudo systemctl start elasticsearch
+```
+
+Verify:
+
+```bash
+sudo systemctl status elasticsearch
 ```
 
 ### Set the Elastic Password
@@ -373,7 +436,7 @@ Use a dedicated ingest user instead of the `elastic` superuser.
 curl -k -u elastic -X POST https://127.0.0.1:9200/_security/role/logstash_writer \
 -H "Content-Type: application/json" \
 -d '{
-  "cluster": ["monitor"],
+  "cluster": ["monitor", "manage_index_templates"],
   "indices": [
     {
       "names": ["dfir-*"],
@@ -409,10 +472,54 @@ Expected result: username `logstash_ingest` with role `logstash_writer`.
 <a id="section-6-configure-kibana"></a>
 ## Section 6 — Configure Kibana
 
+### Kibana Dependency Warning
+
+Kibana depends on **Elasticsearch being healthy and reachable** (`https://127.0.0.1:9200` from this host with TLS as configured).
+
+Symptoms when Elasticsearch is failing or restarting:
+
+```text
+Kibana loads slowly or not at all
+Browser hangs on connection
+Interactive setup / enrollment appears repeatedly
+socket hang up or version errors in Kibana logs toward 127.0.0.1:9200
+```
+
+Always confirm Elasticsearch (`systemctl status elasticsearch`, `curl -k -u elastic https://127.0.0.1:9200`) before spending time on browser or `server.publicBaseUrl` tuning.
+
 Edit Kibana configuration:
 
 ```bash
 sudo nano /etc/kibana/kibana.yml
+```
+
+Set **`kibana_system`** credentials first so Kibana can authenticate to Elasticsearch at startup (otherwise it stays in **`interactiveSetup` / enrollment** modes while long-running plugin bootstrap can make HTTP appear “dead”: TCP connects to `5601`, but **`GET /` returns no bytes until the stack is ready**).
+
+**Prefer the API** below on memory-tight VMs. The bundled `elasticsearch-reset-password` CLI starts another heavyweight JVM alongside an already-large Elasticsearch heap; that combination often drives the whole guest into **swap thrash**, so it looks frozen for minutes.
+
+If `curl ... https://127.0.0.1:9200` returns **connection refused**, Elasticsearch is not listening (stopped, failed, or still booting). Confirm before running the commands below:
+
+```bash
+sudo systemctl status elasticsearch --no-pager
+sudo ss -tlnp | grep 9200
+```
+
+Start or fix Elasticsearch first (`sudo systemctl start elasticsearch`, then **`journalctl -u elasticsearch -n 100`** on failure).
+
+Set the password via the **`elastic`** superuser (reuse the password from [Set the Elastic Password](#section-4-configure-elasticsearch)). Replace **`NEW_KIBANA_SYSTEM_PASSWORD`** with a strong value:
+
+```bash
+curl -k -u elastic -X POST "https://127.0.0.1:9200/_security/user/kibana_system/_password" \
+-H "Content-Type: application/json" \
+-d '{"password":"NEW_KIBANA_SYSTEM_PASSWORD"}'
+```
+
+Expected response: HTTP `200` and `{"acknowledged":true}`.
+
+Optional (**only if API is inconvenient**):
+
+```bash
+sudo /usr/share/elasticsearch/bin/elasticsearch-reset-password -u kibana_system -i --url https://127.0.0.1:9200
 ```
 
 Basic lab configuration:
@@ -420,8 +527,12 @@ Basic lab configuration:
 ```yaml
 server.host: "0.0.0.0"
 server.port: 5601
+# Required when analysts open Kibana by LAN IP or hostname; otherwise redirects and UI assets can fail in the browser.
+server.publicBaseUrl: "http://<ELK-SERVER-IP>:5601"
 elasticsearch.hosts: ["https://127.0.0.1:9200"]
 elasticsearch.ssl.verificationMode: none
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "<kibana_system password>"
 ```
 
 Start Kibana:
@@ -525,13 +636,19 @@ sudo chown logstash:logstash /ingest_local
 sudo chmod 755 /ingest_local
 ```
 
-Copy CSV files from the NAS into local ingest:
+Copy artifacts from the NAS into local ingest (Zimmerman **CSVs** and optional **Plaso** JSONL):
 
 ```bash
 sudo cp /ingest/*.csv /ingest_local/
+sudo find /ingest -name '*_plaso_Output.jsonl' -exec cp {} /ingest_local/ \;
+
 sudo chown logstash:logstash /ingest_local/*.csv
 sudo chmod 444 /ingest_local/*.csv
+sudo chown logstash:logstash /ingest_local/*_plaso_Output.jsonl 2>/dev/null || true
+sudo chmod 444 /ingest_local/*_plaso_Output.jsonl 2>/dev/null || true
 ```
+
+Plaso files must follow **`HOSTNAME_plaso_Output.jsonl`** and be produced as **supertimeline JSON Lines** (for example `psort.py` with **`json_line`** output).
 
 ### Why Copy Instead of Reading Directly from NAS?
 
@@ -563,35 +680,50 @@ http.port: 9600
 - `pipeline.workers: 1` is required when `pipeline.ordered: true` is enabled.
 - Ordered processing is helpful for deterministic forensic ingestion.
 
+### Logstash Directory Permissions (Required)
+
+Logstash needs write access to its **log** and **data** directories (including queues).
+
+```bash
+sudo mkdir -p /var/log/logstash
+sudo mkdir -p /var/lib/logstash
+
+sudo chown -R logstash:logstash /var/log/logstash
+sudo chown -R logstash:logstash /var/lib/logstash
+
+sudo chmod -R 750 /var/log/logstash
+sudo chmod -R 750 /var/lib/logstash
+```
+
+Failure symptoms:
+
+```text
+Permission denied in journalctl for logstash
+Pipeline crash at startup
+Queue or dead letter directory not writable
+```
+
 ---
 
 <a id="section-10-logstash-pipeline-configuration"></a>
 ## Section 10 — Logstash Pipeline Configuration
 
-### Input Filename Convention (Used by This Example)
+### Input filename convention (used by this example)
 
-This pipeline’s dataset routing is based on the **artifact name embedded in the CSV filename**. Use the same naming convention described earlier:
+Dataset routing comes from **the basename of the ingested file path**:
 
-```text
-<HOSTNAME>_<ARTIFACT>_Output.csv
-```
+- **Zimmerman CSVs** — pattern **`<HOSTNAME>_<ARTIFACT>_Output.csv`** (see [Supported Input Files](#supported-input-files)).
+- **Plaso supertimeline** — **`json_line`** / JSONL output named **`<HOSTNAME>_plaso_Output.jsonl`** anywhere under **`/ingest_local`** (glob **`/**/*_plaso_Output.jsonl`**).
 
-Examples:
+If filenames do not match those patterns, the pipeline falls through to **`event.dataset` = `unknown`** (index **`dfir-unknown`**).
 
-```text
-EXAMPLE-DC_EvtxECmd_Output.csv
-EXAMPLE-DC_Hayabusa_Output.csv
-EXAMPLE-DC_MFTECmd_J_Output.csv
-EXAMPLE-DC_MFTECmd_MFT_Output.csv
-```
+### CSV columns (Zimmerman tools) and Plaso JSONL
 
-If filenames don’t include those artifact strings, the regex checks won’t match and events will fall into `dfir-unknown`.
+For CSV artifacts, **manually define** the `csv { columns => [...] }` list per artifact type so it matches current tool output. Do not use one global CSV filter with header autodetection across mixed types.
 
-### CSV Columns (Zimmerman Tools)
+For **Plaso JSONL**, each line is parsed as JSON (`codec => json` on the second `file` input). The pipeline sets **`event.dataset` = `plaso`**, maps Plaso’s **`timestamp`** (epoch **microseconds**) to **`@timestamp`**, and **retains the original `message`** for that dataset so raw JSON remains available in Elasticsearch.
 
-In this deployment, it’s best practice to **manually define the `csv { columns => [...] }` list per artifact type** (as shown below) to match the Zimmerman tool output schemas.
-
-Do not use a single global CSV filter with header autodetection across mixed artifact types; it can cause one artifact’s headers to be applied to another and will break field mappings and dataset separation.
+A final Ruby filter namespaces top-level fields under **`%{dataset}.*`** (for example **`plaso.message`**, **`evtx.TimeCreated`**) to reduce field collisions between tool outputs.
 
 Create the pipeline:
 
@@ -599,24 +731,48 @@ Create the pipeline:
 sudo nano /etc/logstash/conf.d/10-dfir.conf
 ```
 
-Paste the following, replacing `YOUR_LOGSTASH_PASSWORD` with the real password for `logstash_ingest`.
+Paste the following **as the suggested production baseline**. Replace **`YOUR_LOGSTASH_PASSWORD`** with the real password for **`logstash_ingest`**.
+
+The second `file` input uses **`sincedb_path => "/var/lib/logstash/sincedb-plaso"`** (CSV input uses **`/var/lib/logstash/sincedb`**). When reprocessing, delete both sincedb files (see [Section 12](#section-12-start-logstash-and-ingest)).
 
 ```conf
 input {
   file {
     path => "/ingest_local/*.csv"
     start_position => "beginning"
-    sincedb_path => "/var/lib/logstash/sincedb-dfir"
+    sincedb_path => "/var/lib/logstash/sincedb"
     mode => "read"
 
     file_completed_action => "log"
     file_completed_log_path => "/var/log/logstash/ingested_files.log"
   }
+
+  file {
+    path => "/ingest_local/**/*_plaso_Output.jsonl"
+    codec => json
+    start_position => "beginning"
+    sincedb_path => "/var/lib/logstash/sincedb-plaso"
+    mode => "read"
+
+    file_completed_action => "log"
+    file_completed_log_path => "/var/log/logstash/ingested_files.log"
+    tags => ["plaso_jsonl"]
+  }
 }
 
 filter {
-  mutate {
-    add_field => { "[source_file]" => "%{[log][file][path]}" }
+  ruby {
+    code => '
+      source = event.get("[log][file][path]") || event.get("path") || ""
+      event.set("source_file", source)
+
+      filename = File.basename(source.to_s)
+      if (m = filename.match(/^(?<host>.+)_(?:EvtxECmd_Output|Hayabusa_Output|MFTECmd_J_Output|MFTECmd_MFT_Output)\.csv$/i))
+        event.set("[host][name]", m[:host])
+      elsif (m = filename.match(/^(?<host>.+)_plaso_Output\.jsonl$/i))
+        event.set("[host][name]", m[:host])
+      end
+    '
   }
 
   ############################
@@ -630,12 +786,12 @@ filter {
       separator => ","
       ecs_compatibility => "disabled"
       columns => [
-        "RecordNumber", "EventRecordId", "TimeCreated", "EventId", "Level", "Provider",
-        "Channel", "ProcessId", "ThreadId", "Computer", "ChunkNumber", "UserId",
-        "MapDescription", "UserName", "RemoteHost", "PayloadData1", "PayloadData2",
-        "PayloadData3", "PayloadData4", "PayloadData5", "PayloadData6",
-        "ExecutableInfo", "HiddenRecord", "SourceFile", "Keywords",
-        "ExtraDataOffset", "Payload"
+        "RecordNumber","EventRecordId","TimeCreated","EventId","Level","Provider",
+        "Channel","ProcessId","ThreadId","Computer","ChunkNumber","UserId",
+        "MapDescription","UserName","RemoteHost","PayloadData1","PayloadData2",
+        "PayloadData3","PayloadData4","PayloadData5","PayloadData6",
+        "ExecutableInfo","HiddenRecord","SourceFile","Keywords",
+        "ExtraDataOffset","Payload"
       ]
     }
 
@@ -656,13 +812,13 @@ filter {
       separator => ","
       ecs_compatibility => "disabled"
       columns => [
-        "Timestamp", "RuleTitle", "Level", "Computer", "Channel", "EventID",
-        "RecordID", "Details", "ExtraFieldInfo", "RuleID"
+        "Timestamp","RuleTitle","Level","Computer","Channel","EventID",
+        "RecordID","Details","ExtraFieldInfo","RuleID"
       ]
     }
 
     date {
-      match => ["Timestamp", "yyyy-MM-dd HH:mm:ss.SSS ZZZ", "ISO8601"]
+      match => ["Timestamp", "yyyy-MM-dd HH:mm:ss.SSS ZZ", "ISO8601"]
       target => "@timestamp"
     }
   }
@@ -678,16 +834,18 @@ filter {
       separator => ","
       ecs_compatibility => "disabled"
       columns => [
-        "Name", "Extension", "EntryNumber", "SequenceNumber", "ParentEntryNumber",
-        "ParentSequenceNumber", "ParentPath", "UpdateSequenceNumber",
-        "UpdateTimestamp", "UpdateReasons", "FileAttributes", "OffsetToData",
+        "Name","Extension","EntryNumber","SequenceNumber","ParentEntryNumber",
+        "ParentSequenceNumber","ParentPath","UpdateSequenceNumber",
+        "UpdateTimestamp","UpdateReasons","FileAttributes","OffsetToData",
         "SourceFile"
       ]
     }
 
-    date {
-      match => ["UpdateTimestamp", "yyyy-MM-dd HH:mm:ss.SSSSSSS", "ISO8601"]
-      target => "@timestamp"
+    if [UpdateTimestamp] and [UpdateTimestamp] != "" {
+      date {
+        match => ["UpdateTimestamp", "yyyy-MM-dd HH:mm:ss.SSSSSSS", "yyyy-MM-dd HH:mm:ss.SSSSSS", "ISO8601"]
+        target => "@timestamp"
+      }
     }
   }
 
@@ -702,26 +860,42 @@ filter {
       separator => ","
       ecs_compatibility => "disabled"
       columns => [
-        "EntryNumber", "SequenceNumber", "InUse", "ParentEntryNumber",
-        "ParentSequenceNumber", "ParentPath", "FileName", "Extension", "FileSize",
-        "ReferenceCount", "ReparseTarget", "IsDirectory", "HasAds", "IsAds",
-        "SI_LT_FN", "uSecZeros", "Copied", "SiFlags", "NameType",
-        "Created0x10", "Created0x30", "LastModified0x10", "LastModified0x30",
-        "LastRecordChange0x10", "LastRecordChange0x30", "LastAccess0x10",
-        "LastAccess0x30", "UpdateSequenceNumber", "LogfileSequenceNumber",
-        "SecurityId", "ObjectIdFileDroid", "LoggedUtilStream", "ZoneIdContents"
+        "EntryNumber","SequenceNumber","InUse","ParentEntryNumber",
+        "ParentSequenceNumber","ParentPath","FileName","Extension","FileSize",
+        "ReferenceCount","ReparseTarget","IsDirectory","HasAds","IsAds",
+        "SI<FN","uSecZeros","Copied","SiFlags","NameType",
+        "Created0x10","Created0x30","LastModified0x10","LastModified0x30",
+        "LastRecordChange0x10","LastRecordChange0x30","LastAccess0x10",
+        "LastAccess0x30","UpdateSequenceNumber","LogfileSequenceNumber",
+        "SecurityId","ObjectIdFileDroid","LoggedUtilStream","ZoneIdContents"
       ]
     }
 
-    date {
-      match => ["Created0x10", "yyyy-MM-dd HH:mm:ss.SSSSSSS", "ISO8601"]
-      target => "@timestamp"
+    if [Created0x10] and [Created0x10] != "" {
+      date {
+        match => ["Created0x10", "yyyy-MM-dd HH:mm:ss.SSSSSSS", "yyyy-MM-dd HH:mm:ss.SSSSSS", "ISO8601"]
+        target => "@timestamp"
+      }
     }
   }
 
   ############################
-  # FALLBACK
+  # PLASO (supertimeline JSONL)
   ############################
+  else if [source_file] =~ /(?i)_plaso_output\.jsonl$/ {
+    mutate { add_field => { "[event][dataset]" => "plaso" } }
+
+    ruby {
+      code => '
+        ts = event.get("timestamp") || event.get("[date_time][timestamp]")
+        if ts
+          # plaso timestamp is epoch microseconds
+          event.set("@timestamp", LogStash::Timestamp.at(ts.to_f / 1_000_000.0))
+        end
+      '
+    }
+  }
+
   else {
     mutate {
       add_field => { "[event][dataset]" => "unknown" }
@@ -729,8 +903,27 @@ filter {
     }
   }
 
-  mutate {
-    remove_field => ["message"]
+  # Namespace parsed fields under the dataset (e.g. hayabusa.Computer, evtx.EventId, plaso.message).
+  ruby {
+    code => '
+      ds = event.get("[event][dataset]")
+      unless ds.nil? || ds.to_s.empty?
+        skip = %w[event host log message path tags source_file]
+        keys = event.to_hash.keys.map(&:to_s)
+        keys.each do |k|
+          next if k.start_with?("@")
+          next if skip.include?(k)
+          val = event.remove(k)
+          event.set("#{ds}.#{k}", val)
+        end
+      end
+    '
+  }
+
+  if [event][dataset] != "plaso" {
+    mutate {
+      remove_field => ["message"]
+    }
   }
 }
 
@@ -747,6 +940,8 @@ output {
   stdout { codec => rubydebug }
 }
 ```
+
+Optional: comment out **`stdout { codec => rubydebug }`** once the pipeline is stable to reduce CPU and log volume; leave it enabled during first-run troubleshooting.
 
 ---
 
@@ -782,7 +977,7 @@ sudo chown logstash:logstash /var/log/logstash/ingested_files.log
 Clear sincedb before a fresh reingest:
 
 ```bash
-sudo rm -f /var/lib/logstash/sincedb-dfir*
+sudo rm -f /var/lib/logstash/sincedb /var/lib/logstash/sincedb-plaso
 ```
 
 Restart Logstash:
@@ -804,8 +999,8 @@ Pipelines running
 If `stdout { codec => rubydebug }` is enabled, you should see parsed events. Confirm:
 
 ```text
-source_file => /ingest_local/<filename>.csv
-event.dataset => evtx | hayabusa | mft | usnjrnl
+source_file => /ingest_local/<path>/<filename>.csv | .../_plaso_Output.jsonl
+event.dataset => evtx | hayabusa | mft | usnjrnl | plaso
 ```
 
 ---
@@ -819,13 +1014,14 @@ Check indices:
 curl -k -u elastic "https://127.0.0.1:9200/_cat/indices?v"
 ```
 
-Expected indices:
+Expected indices (depending on what you ingested):
 
 ```text
 dfir-evtx
 dfir-hayabusa
 dfir-mft
 dfir-usnjrnl
+dfir-plaso
 ```
 
 Check sample document:
@@ -855,7 +1051,7 @@ Use this procedure when parsing errors, bad mappings, or incorrect field extract
 ```text
 Incorrect field mappings from a previous bad ingest
 Most events landing in dfir-unknown due to temporary pipeline errors
-Need to reprocess the same CSV set from scratch
+Need to reprocess the same artifact set (CSVs and Plaso JSONL) from scratch
 ```
 
 ### Rebuild Procedure
@@ -863,7 +1059,7 @@ Need to reprocess the same CSV set from scratch
 ```bash
 sudo systemctl stop logstash
 curl -k -u elastic -X DELETE "https://127.0.0.1:9200/dfir-*"
-sudo rm -f /var/lib/logstash/sincedb-dfir*
+sudo rm -f /var/lib/logstash/sincedb /var/lib/logstash/sincedb-plaso
 sudo systemctl start logstash
 sudo journalctl -u logstash -f
 ```
@@ -982,6 +1178,26 @@ dfir_admin    = management of data views, spaces, dashboards
 <a id="section-17-testing-and-troubleshooting-notes"></a>
 ## Section 17 — Testing and Troubleshooting Notes
 
+### Elasticsearch Disk Pressure
+
+Elasticsearch may **stop allocating shards** or block indexing when usage crosses cluster disk flood-stage thresholds (often roughly **90%+** on data paths).
+
+Monitor free space:
+
+```bash
+df -h
+```
+
+If the filesystem backing Elasticsearch data approaches **~90%** full:
+
+```text
+Indexing may stop or fail
+Ingestion appears healthy in Logstash but indices do not grow
+Nodes may become unstable
+```
+
+Recommended responses: delete or close old indices, expand the disk, or reduce retained data before re-ingesting.
+
 ### Test 1 — Logstash Will Not Start
 
 Check:
@@ -1020,7 +1236,7 @@ Fix dataset detection or use fallback to `unknown`.
 
 ### Test 3 — Everything Goes to `dfir-unknown`
 
-Check:
+Confirm the file name matches a supported pattern (including **`EXAMPLE-DC_plaso_Output.jsonl`** for Plaso JSONL). Then check:
 
 ```text
 source_file
@@ -1109,13 +1325,13 @@ curl -k -u elastic -X DELETE "https://127.0.0.1:9200/dfir-*"
 <a id="section-18-standard-reingest-procedure"></a>
 ## Section 18 — Standard Reingest Procedure
 
-Use this when changing Logstash mappings or CSV parsing logic.
+Use this when changing Logstash mappings, **CSV** column definitions, or **Plaso JSONL** handling.
 For full troubleshooting context and validation guidance, see [Section 14 — Rebuild Indices After Ingestion Issues](#section-14-rebuild-indices-after-ingestion-issues).
 
 ```bash
 sudo systemctl stop logstash
 curl -k -u elastic -X DELETE "https://127.0.0.1:9200/dfir-*"
-sudo rm -f /var/lib/logstash/sincedb-dfir*
+sudo rm -f /var/lib/logstash/sincedb /var/lib/logstash/sincedb-plaso
 sudo systemctl start logstash
 sudo journalctl -u logstash -f
 ```
@@ -1133,9 +1349,9 @@ curl -k -u elastic "https://127.0.0.1:9200/_cat/indices?v"
 
 ### Normal DFIR Ingest Process
 
-1. Place completed artifact CSVs on NAS.
-2. Confirm filenames match naming convention.
-3. Manually copy CSVs to `/ingest_local`.
+1. Place completed artifact CSVs (and optional **`HOSTNAME_plaso_Output.jsonl`** supertimeline exports) on the NAS.
+2. Confirm filenames match the [Supported Input Files](#supported-input-files) conventions.
+3. Manually copy CSVs and any Plaso JSONL files to `/ingest_local`.
 4. Clear sincedb if reprocessing is desired.
 5. Restart Logstash or start Logstash if stopped.
 6. Watch journal logs.
@@ -1151,6 +1367,7 @@ event.dataset.keyword : "evtx"
 event.dataset.keyword : "hayabusa"
 event.dataset.keyword : "mft"
 event.dataset.keyword : "usnjrnl"
+event.dataset.keyword : "plaso"
 ```
 
 ---
@@ -1252,6 +1469,29 @@ FileAttributes
 SourceFile
 ```
 
+### Dashboard 5 — Plaso Supertimeline (JSONL)
+
+Use when you ingest **`HOSTNAME_plaso_Output.jsonl`** from **`psort.py` `json_line`** (or compatible supertimeline JSONL). After ingestion, fields are namespaced under **`plaso.*`** (for example **`plaso.message`** for the raw line).
+
+Filters:
+
+```text
+event.dataset.keyword : "plaso"
+```
+
+Suggested Discover columns:
+
+```text
+@timestamp
+plaso.message
+plaso.parser
+plaso.hostname
+source_file
+host.name
+```
+
+Tune columns to the Plaso field set you care about (review raw **`plaso.message`** for full JSON when debugging).
+
 ---
 
 <a id="section-21-configure-firewall-ufw"></a>
@@ -1283,7 +1523,7 @@ Before considering the deployment complete, verify:
 [ ] UFW only allows SSH/5601/9200/9600 from 172.16.0.0/24
 [ ] NAS is mounted read-only at /ingest
 [ ] Local ingest folder exists at /ingest_local
-[ ] Files copied into /ingest_local
+[ ] Zimmerman CSVs (and optional Plaso **`_plaso_Output.jsonl`**) copied into `/ingest_local`
 [ ] Logstash does not delete source files
 [ ] dfir-* indices exist
 [ ] event.dataset.keyword has expected values
@@ -1293,13 +1533,40 @@ Before considering the deployment complete, verify:
 [ ] Bad test indices were deleted before production ingest
 ```
 
-Expected final dataset values:
+### Functional Health Checks (Required)
+
+**Elasticsearch**
+
+```bash
+curl -k -u elastic https://127.0.0.1:9200
+```
+
+Expected: JSON cluster information (name, version, tagline).
+
+**Kibana**
+
+```bash
+curl -I --max-time 120 http://127.0.0.1:5601
+```
+
+Expected: HTTP **`200`** or **`302`** (redirect to login or app). If startup is slow, allow up to a few minutes after `systemctl start kibana` before this succeeds.
+
+**Logstash → Elasticsearch**
+
+```bash
+sudo journalctl -u logstash -n 50 --no-pager
+```
+
+Look for successful pipeline lifecycle messages (for example Elasticsearch version or pipeline started). Investigate if you see repeated **`401` Unauthorized** or **`403` Forbidden** against Elasticsearch when the pipeline runs.
+
+Expected final dataset values (as applicable to your artifacts):
 
 ```text
 evtx
 hayabusa
 mft
 usnjrnl
+plaso
 ```
 
 ---
@@ -1312,7 +1579,10 @@ EvtxECmd     → TimeCreated
 Hayabusa     → Timestamp
 MFTECmd $J   → UpdateTimestamp
 MFTECmd $MFT → Created0x10
+Plaso JSONL  → timestamp (epoch microseconds → @timestamp in pipeline)
 ```
+
+Plaso supertimeline lines carry **`timestamp`** as **microseconds since Unix epoch**; the Logstash pipeline converts that to **`@timestamp`**. Confirm in Discover when mixing Plaso with CSV-based datasets.
 
 ---
 
@@ -1322,7 +1592,7 @@ MFTECmd $MFT → Created0x10
 ```bash
 sudo systemctl stop logstash
 curl -k -u elastic -X DELETE "https://127.0.0.1:9200/dfir-*"
-sudo rm -f /var/lib/logstash/sincedb-dfir*
+sudo rm -f /var/lib/logstash/sincedb /var/lib/logstash/sincedb-plaso
 sudo systemctl start logstash
 sudo journalctl -u logstash -f
 ```
@@ -1339,6 +1609,19 @@ sudo systemctl status kibana
 curl -k -u elastic "https://127.0.0.1:9200/_cat/indices?v"
 curl -k -u elastic "https://127.0.0.1:9200/dfir-*/_search?size=1&pretty"
 df -h
+```
+
+### Functional Health Checks
+
+```bash
+# Elasticsearch responds
+curl -k -u elastic https://127.0.0.1:9200
+
+# Kibana HTTP (200 or 302 when ready)
+curl -I --max-time 120 http://127.0.0.1:5601
+
+# Logstash recent log without auth failures to Elasticsearch
+sudo journalctl -u logstash -n 50 --no-pager
 ```
 
 ---
@@ -1404,6 +1687,21 @@ Elasticsearch URL: https://127.0.0.1:9200
 NAS Share: //172.16.0.10/ingest
 Credential Vault Reference: <system/name>
 ```
+
+---
+
+<a id="final-reality-check"></a>
+## Final Reality Check
+
+A working ELK deployment for this SOP **must** satisfy all of the following:
+
+- Elasticsearch responds to **`curl -k -u elastic https://127.0.0.1:9200`** with cluster JSON.
+- Kibana loads in the browser at **`http://<ELK-SERVER-IP>:5601`** (after bootstrap; allow several minutes on first start).
+- Logstash runs with **no persistent Elasticsearch `401` / `403` errors** in `journalctl -u logstash`.
+- **`dfir-*`** indices exist in Elasticsearch after ingest.
+- Documents appear in **Kibana Discover** for the data view matching `dfir-*`.
+
+If any item fails, treat the deployment as **not complete** until the underlying service (usually Elasticsearch availability and credentials) is fixed.
 
 ---
 
