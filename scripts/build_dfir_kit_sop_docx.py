@@ -21,7 +21,6 @@ ORDERED_FILES = [
     "06_Flare-VM-Build.md",
     "07_Artifact-Carving.md",
     "08_Suggestions.md",
-    "Plaso_JSONL_Extraction_Guide.md",
 ]
 OUT_MD = GUIDE_DIR / "_DFIR_Kit_SOP_combined.md"
 OUT_DOCX = GUIDE_DIR / "DFIR_Kit_SOP.docx"

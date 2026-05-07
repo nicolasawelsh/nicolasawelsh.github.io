@@ -137,7 +137,7 @@ Plaso produces a **storage file** (`.plaso`) via **`log2timeline.py`**, then a *
 DESKTOP-EXAMPLE_plaso_Output.jsonl
 ```
 
-The following adapts the **Plaso JSONL extraction workflow** (Docker-based `log2timeline/plaso` image, local evidence under `/data`, variable **`CASE=DESKTOP-EXAMPLE`**). Run these steps on **Linux with Docker** if you do not use Docker on FLARE.
+Use the **`log2timeline/plaso`** Docker image with evidence under **`/data`**, **`CASE=DESKTOP-EXAMPLE`**, and **`IMAGE_NAME`** matching your disk image basename. Run on **Linux with Docker** (helper VM or workstation) if you do not use Docker on FLARE.
 
 ### 1. Install Docker and DFIR helpers (Linux)
 
@@ -151,20 +151,31 @@ sudo docker run --rm hello-world
 ### 2. Layout and copy evidence
 
 ```bash
-sudo mkdir -p /data/images /data/timelines
+sudo mkdir -p /data/images /data/images_raw /data/recovered /data/timelines
 sudo chown -R "$USER:$USER" /data
 ```
 
-Copy the disk image (E01, VMDK, etc.) into `/data/images/DESKTOP-EXAMPLE/` on the processing host.
+Copy disk images onto **local SSD** under **`/data/images/DESKTOP-EXAMPLE/`** (better performance than processing across SMB). If evidence arrives on an external drive, mount it **read-only**, then **`cp`** into `/data/images/` as below.
 
-### 3. Create Plaso storage file
+Optional — mount external evidence and copy:
 
-Example for a single evidence file inside the case folder (adjust `IMAGE_NAME` and extension):
+```bash
+MOUNT_POINT="/mnt/external"
+sudo mkdir -p "$MOUNT_POINT"
+sudo mount -o ro /dev/sdX1 "$MOUNT_POINT"   # replace sdX1 with your device (lsblk)
+sudo mkdir -p /data/images/DESKTOP-EXAMPLE
+sudo cp -r "$MOUNT_POINT/<case_folder>"/* /data/images/DESKTOP-EXAMPLE/
+sudo chown -R "$USER:$USER" /data/images/DESKTOP-EXAMPLE
+```
+
+### 3. Standard E01 — create `.plaso` storage file
+
+Set **`CASE`**, **`IMAGE_NAME`** (basename of the `.E01` without extension), and **`WORKERS`** (often **12–14** on a large Linux helper VM; scale down on smaller hosts).
 
 ```bash
 CASE="DESKTOP-EXAMPLE"
 IMAGE_NAME="SYSTEM"
-WORKERS=8
+WORKERS=12
 
 sudo mkdir -p "/data/timelines/$CASE"
 
@@ -180,9 +191,97 @@ sudo docker run --rm -it \
   "/evidence/$CASE/${IMAGE_NAME}.E01"
 ```
 
-For **VMDK** images, identify the Windows partition with **`mmls`** and pass **`--partitions pN`** instead of **`all`**. For **corrupted E01**, follow **`ewfexport`** + **`tsk_recover`** recovery steps in the detailed Plaso guide before running **`log2timeline.py`** against recovered files.
+### 4. VMware VMDK — pick partition with `mmls`
 
-### 4. Export JSONL for Elastic
+Identify the Windows volume (example uses `p3`; yours may differ):
+
+```bash
+CASE="DESKTOP-EXAMPLE"
+IMAGE_NAME="SYSTEM"
+WORKERS=12
+
+mmls "/data/images/$CASE/${IMAGE_NAME}_1.vmdk"
+```
+
+Run **`log2timeline.py`** with **`--partitions pN`** (not **`all`**) against the flat VMDK path your evidence uses:
+
+```bash
+sudo mkdir -p "/data/timelines/$CASE"
+
+sudo docker run --rm -it \
+  -v /data/images:/evidence:ro \
+  -v /data/timelines:/output \
+  log2timeline/plaso \
+  log2timeline.py \
+  --status_view window \
+  --workers "$WORKERS" \
+  --partitions p3 \
+  --storage_file "/output/$CASE/$IMAGE_NAME.plaso" \
+  "/evidence/$CASE/${IMAGE_NAME}_1.vmdk"
+```
+
+### 5. Corrupted E01 — export RAW, recover files, then Plaso
+
+Verify:
+
+```bash
+CASE="DESKTOP-EXAMPLE"
+IMAGE_NAME="SYSTEM"
+
+ewfinfo "/data/images/$CASE/$IMAGE_NAME.E01"
+ewfverify "/data/images/$CASE/$IMAGE_NAME.E01"
+```
+
+Export RAW skipping unreadable sectors:
+
+```bash
+sudo mkdir -p "/data/images_raw/$CASE"
+
+sudo ewfexport \
+  -t "/data/images_raw/$CASE/$IMAGE_NAME" \
+  -f raw \
+  -S 0 \
+  "/data/images/$CASE/$IMAGE_NAME.E01"
+```
+
+Find the NTFS start sector with **`mmls`** on the **`.raw`** file, then recover with **`tsk_recover`**:
+
+```bash
+mmls "/data/images_raw/$CASE/$IMAGE_NAME.raw"
+# Note START_SECTOR for the main partition (example):
+START_SECTOR=1255424
+
+sudo mkdir -p "/data/recovered/$CASE"
+
+sudo tsk_recover -e \
+  -o $START_SECTOR \
+  "/data/images_raw/$CASE/$IMAGE_NAME.raw" \
+  "/data/recovered/$CASE"
+```
+
+Run Plaso against the recovered directory:
+
+```bash
+CASE="DESKTOP-EXAMPLE"
+IMAGE_NAME="SYSTEM"
+WORKERS=12
+
+sudo mkdir -p "/data/timelines/$CASE"
+
+sudo docker run --rm -it \
+  -v /data/recovered:/recovered:ro \
+  -v /data/timelines:/output \
+  log2timeline/plaso \
+  log2timeline.py \
+  --status_view window \
+  --workers "$WORKERS" \
+  --storage_file "/output/$CASE/$IMAGE_NAME-logical.plaso" \
+  "/recovered/$CASE"
+```
+
+### 6. Export JSONL for Elastic (`psort.py`)
+
+From any **`.plaso`** produced above, write **one JSON Lines** file for ELK using **`-w`** (never shell **`>`** redirection):
 
 ```bash
 CASE="DESKTOP-EXAMPLE"
@@ -197,20 +296,48 @@ sudo docker run --rm -it \
   "/data/$CASE/$IMAGE_NAME.plaso"
 ```
 
-Use **`-w`** (not shell redirection **`>`**)—redirecting stdout breaks JSONL formatting for Elasticsearch.
+If you used the **corrupted-image** path, run **`psort.py`** against **`$IMAGE_NAME-logical.plaso`**:
 
-### 5. Verify
+```bash
+CASE="DESKTOP-EXAMPLE"
+IMAGE_NAME="SYSTEM"
+
+sudo docker run --rm -it \
+  -v /data/timelines:/data \
+  log2timeline/plaso \
+  psort.py \
+  -o json_line \
+  -w "/data/$CASE/${CASE}_plaso_Output.jsonl" \
+  "/data/$CASE/$IMAGE_NAME-logical.plaso"
+```
+
+Use **`-w`** (not **`> outfile.jsonl`**)—redirecting stdout breaks JSONL line boundaries for Elasticsearch.
+
+### 7. Verify, troubleshooting, performance, cleanup
 
 ```bash
 ls -lh "/data/timelines/DESKTOP-EXAMPLE/"
 head -n 2 "/data/timelines/DESKTOP-EXAMPLE/DESKTOP-EXAMPLE_plaso_Output.jsonl"
 ```
 
-Copy **`DESKTOP-EXAMPLE_plaso_Output.jsonl`** to the NAS ingest share for ELK ingestion.
+Copy **`DESKTOP-EXAMPLE_plaso_Output.jsonl`** to the NAS ingest share.
 
-### Reference — full Plaso JSONL guide
+**Common issues**
 
-For **corrupted E01 handling**, **VMDK partition selection**, **`tsk_recover` workflows**, **performance tuning**, and **cleanup**, follow **[Plaso JSONL extraction guide](./Plaso_JSONL_Extraction_Guide)** (canonical lab supplement). Use **`CASE=DESKTOP-EXAMPLE`** and rename the final **`.jsonl`** to **`DESKTOP-EXAMPLE_plaso_Output.jsonl`** so it matches the ELK pipeline.
+```text
+unable to read backup partition table header  → use mmls; target Windows partition with --partitions pN
+missing chunk data / corrupted E01             → ewfexport -S 0, then recovery workflow above
+JSONL empty or malformed in Elastic → ensure psort uses -w path, not shell redirect
+```
+
+**Performance:** Prefer **local SSD**, **`--workers`** in the **12–14** range on capable hosts, smaller **`WORKERS`** on constrained VMs.
+
+**Cleanup** (after you have archived outputs):
+
+```bash
+CASE="DESKTOP-EXAMPLE"
+sudo rm -rf "/data/images/$CASE" "/data/images_raw/$CASE" "/data/recovered/$CASE"
+```
 
 ---
 
