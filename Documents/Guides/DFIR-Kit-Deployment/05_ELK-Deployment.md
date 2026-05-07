@@ -1200,6 +1200,34 @@ Nodes may become unstable
 
 Recommended responses: delete or close old indices, expand the disk, or reduce retained data before re-ingesting.
 
+### Discover Error — `index.highlight.max_analyzed_offset` Exceeded
+
+If Discover returns an error similar to:
+
+```text
+The length [1282211] of field [plaso.body] in doc[...] exceeds the [index.highlight.max_analyzed_offset] limit [1000000]
+```
+
+increase the highlight analysis limit on all DFIR indices:
+
+```bash
+curl -k -u elastic -X PUT "https://127.0.0.1:9200/dfir-*/_settings" \
+-H "Content-Type: application/json" \
+-d '{
+  "index": {
+    "highlight.max_analyzed_offset": 5000000
+  }
+}'
+```
+
+Verify:
+
+```bash
+curl -k -u elastic "https://127.0.0.1:9200/dfir-*/_settings/index.highlight.max_analyzed_offset?pretty"
+```
+
+Use this value to tolerate very large Plaso fields (for example `plaso.body`) in Discover highlighting. If you delete and recreate `dfir-*` indices later, re-apply this setting.
+
 ### Test 1 — Logstash Will Not Start
 
 Check:
