@@ -5,7 +5,7 @@ title: "04 NAS Deployment"
 
 ## Purpose
 
-This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using Samba. The NAS provides controlled file shares for ingestion staging, read-only evidence access, and analyst notes storage for the lab environment. **Client mount policy** (which systems may map which shares) is defined under [Client mount policy](#client-mount-policy-flare-laptops-and-elk-service) and must be enforced together with [06 Flare VM build](./06_Flare-VM-Build) and [07 Suggestions](./07_Suggestions).
+This SOP documents a repeatable deployment for a DFIR NAS on Ubuntu Server using Samba. The NAS provides controlled file shares for ingestion staging, read-only evidence access, and analyst notes storage for the lab environment. **Client mount policy** (which systems may map which shares) is defined under [Client mount policy](#client-mount-policy-flare-laptops-and-elk-service) and must be enforced together with [06 Flare VM build](./06_Flare-VM-Build) and [08 Suggestions](./08_Suggestions).
 
 ## Table of Contents
 
@@ -578,4 +578,5 @@ Owner: <name/team>
 - [04 NAS deployment](./04_NAS-Deployment)
 - [05 ELK deployment](./05_ELK-Deployment)
 - [06 Flare VM build](./06_Flare-VM-Build)
-- [07 Suggestions](./07_Suggestions)
+- [07 Artifact carving](./07_Artifact-Carving)
+- [08 Suggestions](./08_Suggestions)

@@ -224,4 +224,5 @@ vSwitch-DFIR-LAB
 - [04 NAS deployment](./04_NAS-Deployment)
 - [05 ELK deployment](./05_ELK-Deployment)
 - [06 Flare VM build](./06_Flare-VM-Build)
-- [07 Suggestions](./07_Suggestions)
+- [07 Artifact carving](./07_Artifact-Carving)
+- [08 Suggestions](./08_Suggestions)

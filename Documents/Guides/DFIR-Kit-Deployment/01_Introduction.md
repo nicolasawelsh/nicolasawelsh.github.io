@@ -29,6 +29,7 @@ Standalone ESXi host
 - Use **snapshots or templates** for infrastructure rollback; do **not** treat snapshots as evidence backups.
 - Document credentials in an **approved vault**, not in these public-facing pages.
 - **Validate** each service before moving to the next deployment phase.
+- Use **[07 Artifact carving](./07_Artifact-Carving)** for EvtxECmd, Hayabusa, MFTECmd, and Plaso exports matched to ELK filenames (**KAPE** can cover much of the acquisition; the guide explains each tool for clarity and troubleshooting).
 
 ## IP addressing baseline
 
@@ -51,4 +52,5 @@ Standalone ESXi host
 - [04 NAS deployment](./04_NAS-Deployment)
 - [05 ELK deployment](./05_ELK-Deployment)
 - [06 Flare VM build](./06_Flare-VM-Build)
-- [07 Suggestions](./07_Suggestions)
+- [07 Artifact carving](./07_Artifact-Carving)
+- [08 Suggestions](./08_Suggestions)

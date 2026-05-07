@@ -61,7 +61,7 @@ Aligns with the SOP and **[02 Limitations](./02_Limitations)** when running **mu
 4. Follow Mandiant’s steps to **pause Windows Update** and **Defender / Tamper Protection** only for the install window, then restore per org policy after tooling is stable.
 5. Run the **official FLARE-VM** install script and complete all reboots.
 6. Install **[additional tools](#additional-tools-installed-this-kit)** that your team licenses and approves.
-7. Validate tooling, then take **snapshots** / **template** per **[07 Suggestions](./07_Suggestions)**.
+7. Validate tooling, then take **snapshots** / **template** per **[08 Suggestions](./08_Suggestions)**.
 8. Attach the VM to **`PG-DFIR-LAB`** and verify **NAS** and **Kibana** reachability.
 
 ---
@@ -101,7 +101,7 @@ Exact installers and versions change often; record build versions in your **inte
 Per **[04 NAS deployment](./04_NAS-Deployment)**:
 
 - **`evidence`** — Mount on **FLARE** and work with forensic images **directly from the NAS** when your procedure allows (read-only or controlled writes per NAS ACLs). **Do not** copy full case images to unmanaged laptops.
-- **`ingest`** — Mount on **FLARE** for **CSV staging**, **KAPE** and other tool outputs destined for ELK, scratch collaboration, and intermediate files that belong in the **lab-controlled** path before operators sync to the ELK workflow described in **[05 ELK deployment](./05_ELK-Deployment)**.
+- **`ingest`** — Mount on **FLARE** for **CSV staging**, **KAPE** and other tool outputs destined for ELK, scratch collaboration, and intermediate files that belong in the **lab-controlled** path before operators sync to the ELK workflow described in **[05 ELK deployment](./05_ELK-Deployment)**. For **per-tool** commands and ELK-aligned naming (including when reconciling KAPE output names), see **[07 Artifact carving](./07_Artifact-Carving)**.
 - **`vault`** — FLARE **may** use `vault` if your team places shared notes there; **laptops** may mount **`vault` only** for lightweight notes (see NAS guide). Keep **forensic artifacts off laptops**.
 
 Expected SMB paths (example NAS `172.16.0.10`):
@@ -146,4 +146,5 @@ http://172.16.0.20:5601
 - [04 NAS deployment](./04_NAS-Deployment)
 - [05 ELK deployment](./05_ELK-Deployment)
 - [06 Flare VM build](./06_Flare-VM-Build)
-- [07 Suggestions](./07_Suggestions)
+- [07 Artifact carving](./07_Artifact-Carving)
+- [08 Suggestions](./08_Suggestions)

@@ -15,6 +15,8 @@ This guide is based on the working architecture validated during deployment and 
 - A NAS acts as the ingest share.
 - Files are copied from the NAS into a local ingestion folder before Logstash processes them.
 
+For **carving** EVTX, Hayabusa, MFTECmd, and Plaso exports from mounted evidence—including filenames such as **`DESKTOP-EXAMPLE_*`**—see **[07 Artifact carving](./07_Artifact-Carving)** (and the bundled **[Plaso JSONL extraction guide](./Plaso_JSONL_Extraction_Guide)** for full Docker / corrupted-image workflows).
+
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
@@ -1714,4 +1716,5 @@ If any item fails, treat the deployment as **not complete** until the underlying
 - [04 NAS deployment](./04_NAS-Deployment)
 - [05 ELK deployment](./05_ELK-Deployment)
 - [06 Flare VM build](./06_Flare-VM-Build)
-- [07 Suggestions](./07_Suggestions)
+- [07 Artifact carving](./07_Artifact-Carving)
+- [08 Suggestions](./08_Suggestions)
