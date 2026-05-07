@@ -47,7 +47,7 @@ Typical EVTX directory on a Windows system partition:
 
 From a command prompt **on FLARE**, with EvtxECmd on `PATH` (adjust paths):
 
-```text
+```batch
 mkdir D:\staging\DESKTOP-EXAMPLE\evtx_csv
 
 EvtxECmd.exe -d "E:\Windows\System32\winevt\Logs" --csv "D:\staging\DESKTOP-EXAMPLE\evtx_csv"
@@ -57,7 +57,7 @@ Directory mode writes **one CSV per `.evtx` file**. The ELK pipeline expects a *
 
 **Consolidate** EVTX CSVs that share the same header (same EvtxECmd version/options), for example with PowerShell (run from `evtx_csv`):
 
-```text
+```powershell
 $out = "D:\staging\DESKTOP-EXAMPLE\DESKTOP-EXAMPLE_EvtxECmd_Output.csv"
 $files = Get-ChildItem -Filter *.csv | Sort-Object Name
 $header = Get-Content $files[0].FullName -TotalCount 1
@@ -77,7 +77,7 @@ Hayabusa ships with a large **sigma-compatible** ruleset. **Refresh rules before
 
 ### Update rules (required before major runs)
 
-```text
+```batch
 hayabusa.exe update-rules
 ```
 
@@ -89,7 +89,7 @@ Hayabusa **3.x** renamed several subcommands—run **`hayabusa.exe help`** on yo
 
 Example (**Hayabusa 2.x** style):
 
-```text
+```batch
 mkdir D:\staging\DESKTOP-EXAMPLE
 
 hayabusa.exe csv-timeline -d "E:\Windows\System32\winevt\Logs" -o "D:\staging\DESKTOP-EXAMPLE\DESKTOP-EXAMPLE_Hayabusa_Output.csv" -m informational
@@ -109,7 +109,7 @@ Mount the volume that contains the NTFS filesystem (often the OS partition). Pat
 
 MFTECmd expects the **`$MFT`** file at the NTFS root:
 
-```text
+```batch
 mkdir D:\staging\DESKTOP-EXAMPLE\mft
 
 MFTECmd.exe -f "E:\$MFT" --csv "D:\staging\DESKTOP-EXAMPLE\mft" --csvf DESKTOP-EXAMPLE_MFTECmd_MFT_Output.csv
@@ -119,7 +119,7 @@ If `--csvf` is unsupported in your build, allow MFTECmd to emit its default name
 
 ### `$J` (USN Journal)
 
-```text
+```batch
 mkdir D:\staging\DESKTOP-EXAMPLE\usnj
 
 MFTECmd.exe -f "E:\$Extend\$J" --csv "D:\staging\DESKTOP-EXAMPLE\usnj" --csvf DESKTOP-EXAMPLE_MFTECmd_J_Output.csv

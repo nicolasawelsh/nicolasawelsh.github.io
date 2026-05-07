@@ -152,6 +152,20 @@ div.highlighter-rouge {
   background: transparent !important;
 }
 
+/*
+ * Batch/cmd (and PowerShell): Rouge’s batch lexer splits *.exe oddly, making
+ * the extension stand out vs the theme’s .nt / .kp rules above—flatten spans.
+ */
+.language-batch .highlight pre,
+.language-batch .highlight code,
+.language-batch .highlight span,
+.language-powershell .highlight pre,
+.language-powershell .highlight code,
+.language-powershell .highlight span {
+  color: #d8e2f0 !important;
+  background: transparent !important;
+}
+
 .code-copy-btn {
   position: absolute;
   top: 0.45rem;
